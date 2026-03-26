@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 私人助理</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #12151c;
+    --surface2: #1a1f2e;
+    --border: rgba(255,255,255,0.07);
+    --accent: #4fffb0;
+    --accent2: #4fa8ff;
+    --warn: #ff6b4a;
+    --text: #e8eaf0;
+    --muted: #5a6077;
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,255,176,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,255,176,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    max-width: 420px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 20px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.8);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-left h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .header-left h1 span { color: var(--accent); }
+
+  .header-left .date {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* ── AI Voice Bar ── */
+  .voice-bar {
+    margin: 16px;
+    background: linear-gradient(135deg, rgba(79,255,176,0.08), rgba(79,168,255,0.08));
+    border: 1px solid rgba(79,255,176,0.2);
+    border-radius: 20px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .voice-bar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(79,255,176,0.05), transparent);
+    animation: shimmer 3s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .voice-bar:hover { border-color: rgba(79,255,176,0.4); transform: translateY(-1px); }
+
+  .mic-btn {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(79,255,176,0.3);
+  }
+
+  .mic-btn svg { color: #0a0c10; }
+
+  .voice-text h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+
+  .voice-text p {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .voice-waves {
+    margin-left: auto;
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    height: 24px;
+  }
+
+  .voice-waves span {
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: 0.4;
+    animation: wave 1.2s ease-in-out infinite;
+  }
+
+  .voice-waves span:nth-child(1) { height: 8px; animation-delay: 0s; }
+  .voice-waves span:nth-child(2) { height: 16px; animation-delay: 0.2s; }
+  .voice-waves span:nth-child(3) { height: 12px; animation-delay: 0.4s; }
+  .voice-waves span:nth-child(4) { height: 20px; animation-delay: 0.1s; }
+  .voice-waves span:nth-child(5) { height: 10px; animation-delay: 0.3s; }
+
+  @keyframes wave {
+    0%,100% { transform: scaleY(1); opacity: 0.4; }
+    50% { transform: scaleY(1.5); opacity: 1; }
+  }
+
+  /* ── Summary Cards ── */
+  .summary-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+
+  .sum-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sum-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .sum-card.emails::after { background: var(--warn); }
+  .sum-card.tasks::after { background: var(--accent2); }
+  .sum-card.meetings::after { background: var(--accent); }
+
+  .sum-card .num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .sum-card.emails .num { color: var(--warn); }
+  .sum-card.tasks .num { color: var(--accent2); }
+  .sum-card.meetings .num { color: var(--accent); }
+
+  .sum-card .label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Section ── */
+  .section {
+    padding: 0 16px;
+    margin-bottom: 20px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .section-action {
+    font-size: 11px;
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  /* ── Email Cards ── */
+  .email-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .email-card:hover {
+    border-color: rgba(255,255,255,0.15);
+    transform: translateX(2px);
+  }
+
+  .email-card.urgent {
+    border-left: 3px solid var(--warn);
+  }
+
+  .email-card.normal {
+    border-left: 3px solid var(--accent2);
+  }
+
+  .email-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+
+  .email-sender {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .email-time {
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+
+  .email-subject {
+    font-size: 12px;
+    color: #8892aa;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .email-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .tag.urgent { background: rgba(255,107,74,0.15); color: var(--warn); }
+  .tag.reply { background: rgba(79,168,255,0.15); color: var(--accent2); }
+  .tag.meeting { background: rgba(79,255,176,0.15); color: var(--accent); }
+  .tag.ai { background: rgba(180,100,255,0.15); color: #c084fc; }
+
+  .email-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn-small {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .btn-draft {
+    background: rgba(79,168,255,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(79,168,255,0.2);
+  }
+
+  .btn-draft:hover { background: rgba(79,168,255,0.25); }
+
+  .btn-calendar {
+    background: rgba(79,255,176,0.15);
+    color: var(--accent);
+    border: 1px solid rgba(79,255,176,0.2);
+  }
+
+  .btn-calendar:hover { background: rgba(79,255,176,0.25); }
+
+  .btn-skip {
+    background: rgba(255,255,255,0.05);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Draft Modal ── */
+  .draft-box {
+    background: var(--surface2);
+    border: 1px solid rgba(79,168,255,0.3);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    display: none;
+  }
+
+  .draft-box.show { display: block; animation: slideDown 0.3s ease; }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .draft-label {
+    font-size: 10px;
+    color: var(--accent2);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .draft-label::before {
+    content: '✦';
+    font-size: 8px;
+  }
+
+  .draft-text {
+    font-size: 12px;
+    color: #8892aa;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  .draft-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn-send {
+    flex: 2;
+    padding: 9px;
+    background: var(--accent2);
+    color: #0a0c10;
+    border: none;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-edit {
+    flex: 1;
+    padding: 9px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── Calendar Events ── */
+  .cal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .cal-card:hover { border-color: rgba(79,255,176,0.2); }
+
+  .cal-time-block {
+    text-align: center;
+    min-width: 44px;
+  }
+
+  .cal-time {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .cal-ampm {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .cal-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .cal-info h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+
+  .cal-info p {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .cal-icon {
+    margin-left: auto;
+    width: 28px; height: 28px;
+    background: rgba(79,255,176,0.1);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  /* ── Voice Command History ── */
+  .voice-history {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .voice-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .voice-item:last-child { border-bottom: none; }
+
+  .voice-role {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    min-width: 36px;
+  }
+
+  .voice-role.user { color: var(--accent2); }
+  .voice-role.ai { color: var(--accent); }
+
+  .voice-msg {
+    font-size: 12px;
+    color: #8892aa;
+    line-height: 1.5;
+  }
+
+  .voice-msg strong { color: var(--text); font-weight: 500; }
+
+  /* ── Bottom Nav ── */
+  .bottom-nav {
+    position: sticky;
+    bottom: 0;
+    background: rgba(10,12,16,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 12px 0 20px;
+    z-index: 100;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 12px;
+    margin: 0 4px;
+    transition: all 0.2s;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active { background: rgba(79,255,176,0.08); }
+
+  .nav-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .nav-label {
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .nav-item.active .nav-label { color: var(--accent); }
+
+  .nav-badge {
+    position: absolute;
+    top: -2px; right: -2px;
+    width: 14px; height: 14px;
+    background: var(--warn);
+    border-radius: 50%;
+    font-size: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    color: white;
+  }
+
+  .nav-icon-wrap { position: relative; }
+
+  /* ── Scroll container ── */
+  .scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 10px;
+  }
+
+  .scroll-content::-webkit-scrollbar { width: 0; }
+
+  /* ── Notification toast ── */
+  .toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--surface2);
+    border: 1px solid rgba(79,255,176,0.3);
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── Listening overlay ── */
+  .listening-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,12,16,0.9);
+    backdrop-filter: blur(10px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .listening-overlay.show { display: flex; }
+
+  .listen-ring {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(79,255,176,0.1);
+    border: 2px solid rgba(79,255,176,0.3);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    animation: ringPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes ringPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(79,255,176,0.3); }
+    50% { box-shadow: 0 0 0 30px rgba(79,255,176,0); }
+  }
+
+  .listen-inner {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .listen-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  .listen-sub {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .listen-commands {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 20px;
+    width: 320px;
+  }
+
+  .listen-cmd {
+    font-size: 12px;
+    color: #8892aa;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .listen-cmd:last-child { border-bottom: none; }
+  .listen-cmd::before { content: '"'; color: var(--accent); font-size: 16px; }
+
+  .close-listen {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .inbox-source {
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .source-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+
+  .dot-outlook { background: #0078d4; }
+  .dot-gmail { background: #ea4335; }
+
+  /* Page tabs */
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Toast Notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Listening Overlay -->
+<div class="listening-overlay" id="listenOverlay">
+  <div class="listen-ring">
+    <div class="listen-inner">
+      <svg width="36" height="36" fill="none" viewBox="0 0 24 24">
+        <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#0a0c10"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M9 22h6" stroke="#0a0c10" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+  <div class="listen-title">正在聆听...</div>
+  <div class="listen-sub">请说出你的指令</div>
+  <div class="listen-commands">
+    <div class="listen-cmd">帮我回复张总，说周五可以开会</div>
+    <div class="listen-cmd">把明天下午3点的会议加到日历</div>
+    <div class="listen-cmd">今天有哪些重要邮件？</div>
+    <div class="listen-cmd">提醒我下午5点回复合同</div>
+  </div>
+  <button class="close-listen" onclick="closeListen()">取消</button>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>AI<span>助理</span></h1>
+      <div class="date" id="dateStr">2025年3月20日，星期四</div>
+    </div>
+    <div class="status-dot"></div>
+  </div>
+
+  <!-- Scroll Content -->
+  <div class="scroll-content">
+
+    <!-- Voice Bar -->
+    <div class="voice-bar" onclick="openListen()">
+      <div class="mic-btn">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="currentColor"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M9 22h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="voice-text">
+        <h3>语音助理</h3>
+        <p>点击说话，安排任何事情</p>
+      </div>
+      <div class="voice-waves">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- Summary Row -->
+    <div class="summary-row">
+      <div class="sum-card emails">
+        <div class="num">7</div>
+        <div class="label">待回邮件</div>
+      </div>
+      <div class="sum-card tasks">
+        <div class="num">4</div>
+        <div class="label">待办事项</div>
+      </div>
+      <div class="sum-card meetings">
+        <div class="num">2</div>
+        <div class="label">今日会议</div>
+      </div>
+    </div>
+
+    <!-- Emails Page -->
+    <div class="page active" id="page-email">
+
+      <!-- Urgent Emails -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">🔴 需要立即处理</div>
+          <div class="section-action" onclick="showToast('已读取所有邮箱')">刷新邮件</div>
+        </div>
+
+        <!-- Email sources -->
+        <div class="inbox-source">
+          <div class="source-dot dot-outlook"></div> Outlook — david@company.com &nbsp;|&nbsp;
+          <div class="source-dot dot-gmail"></div> Gmail — david@gmail.com
+        </div>
+
+        <!-- Email 1 -->
+        <div class="email-card urgent" onclick="toggleDraft('draft1')">
+          <div class="email-top">
+            <div class="email-sender">张总 · 华盛顿资本</div>
+            <div class="email-time">09:14</div>
+          </div>
+          <div class="email-subject">关于Q2合同条款，请今日内确认</div>
+          <div class="email-tags">
+            <span class="tag urgent">紧急</span>
+            <span class="tag reply">需回复</span>
+            <span class="tag ai">AI已分析</span>
+          </div>
+          <div class="email-actions" onclick="event.stopPropagation()">
+            <button class="btn-small btn-draft" onclick="toggleDraft('draft1')">✦ 生成草稿</button>
+            <button class="btn-small btn-calendar" onclick="showToast('已加入日历提醒')">+ 加提醒</button>
+            <button class="btn-small btn-skip" onclick="showToast('已忽略')">跳过</button>
+          </div>
+          <div class="draft-box" id="draft1">
+            <div class="draft-label">AI 生成草稿</div>
+            <div class="draft-text">
+              张总，您好！<br><br>
+              感谢您的邮件。关于Q2合同条款，我已仔细审阅，整体内容可以接受。以下几点我们可以进一步讨论：<br><br>
+              第3条款的付款周期，建议调整为净30天。其余条款均无异议。<br><br>
+              期待您的回复。<br>
+              David
+            </div>
+            <div class="draft-buttons">
+              <button class="btn-send" onclick="showToast('草稿已确认，准备发送')">确认发送</button>
+              <button class="btn-edit" onclick="showToast('进入编辑模式')">修改</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email 2 -->
+        <div class="email-card urgent" onclick="toggleDraft('draft2')">
+          <div class="email-top">
+            <div class="email-sender">李律师 · 法律顾问</div>
+            <div class="email-time">08:30</div>
+          </div>
+          <div class="email-subject">股东协议需要你在周五前签字</div>
+          <div class="email-tags">
+            <span class="tag urgent">截止周五</span>
+            <span class="tag meeting">需签字</span>
+          </div>
+          <div class="email-actions" onclick="event.stopPropagation()">
+            <button class="btn-small btn-draft" onclick="toggleDraft('draft2')">✦ 生成草稿</button>
+            <button class="btn-small btn-calendar" onclick="showToast('周五提醒已加入日历')">+ 加截止提醒</button>
+            <button class="btn-small btn-skip">跳过</button>
+          </div>
+          <div class="draft-box" id="draft2">
+            <div class="draft-label">AI 生成草稿</div>
+            <div class="draft-text">
+              李律师，您好！<br><br>
+              收到邮件，我会在周五前完成签字并发回给您。如需要在线签署，请发送相关链接。<br><br>
+              谢谢，<br>David
+            </div>
+            <div class="draft-buttons">
+              <button class="btn-send" onclick="showToast('草稿已确认，准备发送')">确认发送</button>
+              <button class="btn-edit">修改</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Normal Emails -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">📬 其他待处理</div>
+          <div class="section-action">查看全部 (5)</div>
+        </div>
+
+        <div class="email-card normal">
+          <div class="email-top">
+            <div class="email-sender">王经理 · 供应链</div>
+            <div class="email-time">昨天</div>
+          </div>
+          <div class="email-subject">下周物流排期确认，需要你审批</div>
+          <div class="email-tags">
+            <span class="tag reply">需审批</span>
+          </div>
+          <div class="email-actions">
+            <button class="btn-small btn-draft" onclick="showToast('正在生成回复草稿...')">✦ 生成草稿</button>
+            <button class="btn-small btn-calendar" onclick="showToast('已加入待办')">+ 待办</button>
+            <button class="btn-small btn-skip">跳过</button>
+          </div>
+        </div>
+
+        <div class="email-card normal">
+          <div class="email-top">
+            <div class="email-sender">HR 部门</div>
+            <div class="email-time">昨天</div>
+          </div>
+          <div class="email-subject">2025年度考核表请在本月底前提交</div>
+          <div class="email-tags">
+            <span class="tag reply">截止本月底</span>
+          </div>
+          <div class="email-actions">
+            <button class="btn-small btn-calendar" onclick="showToast('月底提醒已加入日历')">+ 加截止提醒</button>
+            <button class="btn-small btn-skip">跳过</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Calendar -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">📅 今日日程</div>
+          <div class="section-action" onclick="switchTab('calendar')">完整日历</div>
+        </div>
+
+        <div class="cal-card" onclick="showToast('会议详情已打开')">
+          <div class="cal-time-block">
+            <div class="cal-time">10</div>
+            <div class="cal-ampm">:00 AM</div>
+          </div>
+          <div class="cal-divider"></div>
+          <div class="cal-info">
+            <h4>华盛顿资本 — 季度汇报</h4>
+            <p>张总，李CFO · Zoom会议 · 60分钟</p>
+          </div>
+          <div class="cal-icon">🎯</div>
+        </div>
+
+        <div class="cal-card" onclick="showToast('会议详情已打开')">
+          <div class="cal-time-block">
+            <div class="cal-time">3</div>
+            <div class="cal-ampm">:00 PM</div>
+          </div>
+          <div class="cal-divider"></div>
+          <div class="cal-info">
+            <h4>团队站会</h4>
+            <p>全体成员 · 公司会议室A · 30分钟</p>
+          </div>
+          <div class="cal-icon">👥</div>
+        </div>
+      </div>
+
+      <!-- AI Voice Log -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">🎙 最近语音记录</div>
+        </div>
+        <div class="voice-history">
+          <div class="voice-item">
+            <div class="voice-role user">你</div>
+            <div class="voice-msg">帮我把明天下午两点的客户会议加到日历</div>
+          </div>
+          <div class="voice-item">
+            <div class="voice-role ai">AI</div>
+            <div class="voice-msg"><strong>已完成</strong> — 明天下午2:00「客户会议」已加入 Google Calendar，是否需要设置提前30分钟提醒？</div>
+          </div>
+          <div class="voice-item">
+            <div class="voice-role user">你</div>
+            <div class="voice-msg">帮我回复张总，说10点会议我会准时参加</div>
+          </div>
+          <div class="voice-item">
+            <div class="voice-role ai">AI</div>
+            <div class="voice-msg"><strong>草稿已生成</strong> — 已为张总的邮件生成回复草稿，请确认后发送。</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page-email -->
+
+  </div>
+  <!-- /scroll-content -->
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="tab-email" onclick="switchTab('email')">
+      <div class="nav-icon-wrap">
+        <div class="nav-icon">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="nav-badge">7</div>
+      </div>
+      <div class="nav-label">邮件</div>
+    </div>
+
+    <div class="nav-item" id="tab-calendar" onclick="switchTab('calendar')">
+      <div class="nav-icon">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </div>
+      <div class="nav-label">日历</div>
+    </div>
+
+    <div class="nav-item" id="tab-voice" onclick="openListen()">
+      <div class="nav-icon">
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="rgba(79,255,176,0.15)" stroke="#4fffb0" stroke-width="1.5"/>
+          <path d="M12 8a2 2 0 0 1 2 2v3a2 2 0 0 1-4 0v-3a2 2 0 0 1 2-2z" fill="#4fffb0"/>
+          <path d="M16 13a4 4 0 0 1-8 0M12 17v2" stroke="#4fffb0" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="nav-label" style="color: var(--accent);">语音</div>
+    </div>
+
+    <div class="nav-item" id="tab-tasks" onclick="switchTab('tasks')">
+      <div class="nav-icon">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="nav-label">任务</div>
+    </div>
+
+    <div class="nav-item" id="tab-settings" onclick="switchTab('settings')">
+      <div class="nav-icon">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </div>
+      <div class="nav-label">设置</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Date
+  const d = new Date();
+  const days = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  document.getElementById('dateStr').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日，${days[d.getDay()]}`;
+
+  // Toast
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = '✓ ' + msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Toggle draft
+  function toggleDraft(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('show');
+  }
+
+  // Listen overlay
+  function openListen() {
+    document.getElementById('listenOverlay').classList.add('show');
+  }
+
+  function closeListen() {
+    document.getElementById('listenOverlay').classList.remove('show');
+  }
+
+  // Tab switching (stub)
+  function switchTab(tab) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const tabEl = document.getElementById('tab-' + tab);
+    if (tabEl) tabEl.classList.add('active');
+
+    const msgs = {
+      calendar: '📅 日历视图（完整版开发中）',
+      tasks: '✅ 任务列表（完整版开发中）',
+      settings: '⚙️ 设置（邮箱账号、提醒时间等）',
+      email: null
+    };
+    if (msgs[tab]) showToast(msgs[tab]);
+  }
+</script>
+</body>
+</html>
