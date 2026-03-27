@@ -167,7 +167,7 @@ h1{
 // Config — 填入你的 Google Client ID
 const GOOGLE_CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
-const REDIRECT_URI = 'https://voice-ai-assistant-gamma.vercel.app/callback.html';
+const REDIRECT_URI = window.location.origin + '/app.html';
 
 function loginWithGoogle() {
   if (GOOGLE_CLIENT_ID === '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com') {
@@ -177,7 +177,7 @@ function loginWithGoogle() {
   const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${GOOGLE_CLIENT_ID}&` +
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
-    `response_type=code&` +
+    `response_type=token&` +
     `scope=${encodeURIComponent(SCOPES)}&` +
     `access_type=offline&` +
     `prompt=consent`;
