@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>登录中...</title>
+</head>
+<body>
+<script>
+// Get token from hash and save to localStorage
+const hash = window.location.hash;
+if (hash && hash.includes('access_token')) {
+  const params = new URLSearchParams(hash.substring(1));
+  const token = params.get('access_token');
+  if (token) {
+    localStorage.setItem('gat', token);
+  }
+}
+// Always redirect to app
+window.location.replace('app.html');
+</script>
+</body>
+</html>
