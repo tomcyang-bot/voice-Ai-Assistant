@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 日历助理 — 登录</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07090f;--cyan:#00e5ff;--cyan2:#00ffcc;
+  --surface:#0e1220;--border:rgba(0,229,255,0.12);
+  --text:#d0ddf0;--muted:#3d5070;--white:#edf4ff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;
+}
+.orb{
+  position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;
+}
+.orb1{width:400px;height:400px;background:rgba(0,100,255,0.12);top:-100px;right:-100px;}
+.orb2{width:300px;height:300px;background:rgba(0,229,255,0.06);bottom:-50px;left:-50px;}
+
+.card{
+  position:relative;z-index:1;
+  width:340px;
+  background:rgba(14,18,32,0.9);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:36px 28px;
+  text-align:center;
+  backdrop-filter:blur(20px);
+}
+
+.logo{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:28px;
+}
+.logo-box{
+  width:40px;height:40px;
+  border:1.5px solid var(--cyan);
+  display:flex;align-items:center;justify-content:center;
+  clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+  background:rgba(0,229,255,0.07);
+}
+.logo-box span{font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);}
+.logo-text{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--white);}
+.logo-text em{color:var(--cyan);font-style:normal;}
+
+h1{
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  color:var(--white);margin-bottom:8px;letter-spacing:-.5px;
+}
+.subtitle{font-size:13px;color:#5a7090;line-height:1.6;margin-bottom:28px;}
+
+.features{
+  display:flex;flex-direction:column;gap:8px;
+  margin-bottom:28px;text-align:left;
+}
+.feat{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  background:rgba(0,229,255,0.04);
+  border:1px solid rgba(0,229,255,0.08);
+  border-radius:10px;
+}
+.feat-icon{font-size:16px;flex-shrink:0;}
+.feat-text{font-size:12px;color:#7090b0;line-height:1.4;}
+.feat-text strong{color:var(--text);font-weight:500;}
+
+.btn-google{
+  width:100%;padding:14px;
+  background:var(--white);color:#1a1a2e;
+  border:none;border-radius:12px;
+  font-size:14px;font-weight:700;
+  cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;margin-bottom:12px;
+}
+.btn-google:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,229,255,0.15);}
+
+.btn-demo{
+  width:100%;padding:12px;
+  background:transparent;
+  border:1px solid var(--border);
+  color:#5a7090;
+  border-radius:12px;font-size:13px;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:all .2s;
+}
+.btn-demo:hover{border-color:rgba(0,229,255,0.3);color:var(--cyan);}
+
+.privacy{
+  margin-top:16px;font-size:10px;color:var(--muted);
+  line-height:1.6;
+}
+.privacy a{color:rgba(0,229,255,0.6);text-decoration:none;}
+
+/* Google icon SVG */
+.g-icon{width:18px;height:18px;flex-shrink:0;}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="card">
+  <div class="logo">
+    <div class="logo-box"><span>AI</span></div>
+    <div class="logo-text">Cal<em>Voice</em></div>
+  </div>
+
+  <h1>你的 AI 日历助理</h1>
+  <p class="subtitle">语音说话，AI 自动整理所有邮件里的日程，统一管理</p>
+
+  <div class="features">
+    <div class="feat">
+      <div class="feat-icon">🎙</div>
+      <div class="feat-text"><strong>语音添加日程</strong> — 说一句话，自动识别时间地点</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📧</div>
+      <div class="feat-text"><strong>邮件自动抓取</strong> — Gmail / Outlook 会议邀请自动加入</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">📅</div>
+      <div class="feat-text"><strong>统一日历视图</strong> — 所有来源汇总，不遗漏任何事</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔒</div>
+      <div class="feat-text"><strong>数据归你所有</strong> — 存在你的 Google 账号，我们看不到</div>
+    </div>
+  </div>
+
+  <button class="btn-google" onclick="loginWithGoogle()">
+    <svg class="g-icon" viewBox="0 0 24 24">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+    用 Google 账号登录
+  </button>
+
+  <button class="btn-demo" onclick="window.location.href='voice-calendar.html'">
+    先看演示版 →
+  </button>
+
+  <div class="privacy">
+    🔒 我们只读取日历和邮件里的日程信息<br>
+    数据存在你的 Google 账号，<a href="#">隐私政策</a>
+  </div>
+</div>
+
+<script>
+// Config — 填入你的 Google Client ID
+const GOOGLE_CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
+const REDIRECT_URI = 'https://voice-ai-assistant-gamma.vercel.app/callback.html';
+
+function loginWithGoogle() {
+  if (GOOGLE_CLIENT_ID === '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com') {
+    alert('请先在 Google Cloud Console 创建 OAuth 应用，然后填入 Client ID');
+    return;
+  }
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GOOGLE_CLIENT_ID}&` +
+    `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent(SCOPES)}&` +
+    `access_type=offline&` +
+    `prompt=consent`;
+  window.location.href = url;
+}
+</script>
+</body>
+</html>
