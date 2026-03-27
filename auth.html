@@ -179,10 +179,10 @@ function loginWithGoogle() {
     `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
     `response_type=token&` +
     `scope=${encodeURIComponent(SCOPES)}&` +
-    `access_type=offline&` +
     `prompt=consent`;
   window.location.href = url;
 }
 </script>
 </body>
 </html>
+
