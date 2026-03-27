@@ -321,13 +321,13 @@ window.addEventListener('load', async () => {
     const hashParams = new URLSearchParams(hash.substring(1));
     accessToken = hashParams.get('access_token');
     localStorage.setItem('gat', accessToken);
-    window.location.hash = '';
+    // Clean URL without reload
+    history.replaceState(null, '', window.location.pathname);
     await initApp();
   } else if (localStorage.getItem('gat')) {
     accessToken = localStorage.getItem('gat');
     await initApp();
   } else {
-    // Redirect to login
     window.location.href = 'auth.html';
   }
 });
