@@ -333,23 +333,29 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 
 // ── Claude API helper ──
 async function callClaude(system, message) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
   try {
-
-    // 🔥 自动兜底（关键）
-    const finalMessage = message || system || " ";
-
     const res = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system: system || "你是AI助手",
-        message: finalMessage
-      })
+        message: message || system || " "   // 🔥 关键修复
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('API error ' + res.status + ': ' + err);
+    }
 
     const text = await res.text();
 
-    // 🔥 防止返回不是JSON
     try {
       return JSON.parse(text).text;
     } catch {
@@ -357,7 +363,8 @@ async function callClaude(system, message) {
     }
 
   } catch (e) {
-    console.error("Claude error:", e);
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('请求超时，请重试');
     throw e;
   }
 }
@@ -368,10 +375,7 @@ async function callClaude(system, message) {
     const res = await fetch('/api/claude', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ 
-  system, 
-  message: message || system 
-})
+      body: JSON.stringify({ system, message }),
       signal: controller.signal
     });
     clearTimeout(timeout);
