@@ -894,18 +894,34 @@ function switchTab(tab) {
   currentTab = tab;
   const calWrap = document.querySelector('.cal-wrap');
   const emailWrap = document.getElementById('emailWrap');
+  const todoWrap = document.getElementById('todoWrap');
   const voiceWrap = document.querySelector('.voice-wrap');
-  const navEmail = document.getElementById('navEmail');
-  
+
+  // Hide all
+  [calWrap, emailWrap, todoWrap].forEach(el => { if(el) el.style.display = 'none'; });
+  if (voiceWrap) voiceWrap.style.display = 'none';
+
+  // Reset nav
+  document.querySelectorAll('.ni').forEach(n => {
+    n.classList.remove('active');
+    const lbl = n.querySelector('.ni-lbl');
+    if (lbl) lbl.style.color = '';
+  });
+
   if (tab === 'email') {
-    if (calWrap) calWrap.style.display = 'none';
     if (emailWrap) emailWrap.style.display = 'block';
-    if (navEmail) { navEmail.classList.add('active'); navEmail.querySelector('.ni-lbl').style.color='var(--cyan)'; }
-    document.querySelector('.ni.active:not(#navEmail)')?.classList.remove('active');
+    const nav = document.getElementById('navEmail');
+    if (nav) { nav.classList.add('active'); nav.querySelector('.ni-lbl').style.color = 'var(--cyan)'; }
+  } else if (tab === 'todo') {
+    if (todoWrap) todoWrap.style.display = 'block';
+    const nav = document.getElementById('navTodo');
+    if (nav) { nav.classList.add('active'); nav.querySelector('.ni-lbl').style.color = 'var(--cyan)'; }
+    if (typeof renderTodos === 'function') renderTodos();
   } else {
     if (calWrap) calWrap.style.display = 'block';
-    if (emailWrap) emailWrap.style.display = 'none';
-    if (navEmail) { navEmail.classList.remove('active'); navEmail.querySelector('.ni-lbl').style.color=''; }
+    if (voiceWrap) voiceWrap.style.display = 'block';
+    const first = document.querySelector('.ni:first-child');
+    if (first) { first.classList.add('active'); first.querySelector('.ni-lbl').style.color = 'var(--cyan)'; }
   }
 }
 
