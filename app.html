@@ -258,6 +258,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <svg fill="none" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8"/></svg>
       <div class="ni-lbl">邮件</div>
     </div>
+    <div class="ni" onclick="window.open('privacy.html')">
+      <svg fill="none" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.8"/></svg>
+      <div class="ni-lbl">隐私</div>
+    </div>
     <div class="ni" onclick="logout()">
       <svg fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div class="ni-lbl">退出</div>
@@ -1039,6 +1043,14 @@ function deleteDraft(i) {
   showToast('草稿已删除');
 }
 
+// Fix 2: Stable base64 encoding for Chinese/special characters
+function base64UrlEncode(str) {
+  return btoa(
+    new TextEncoder().encode(str)
+      .reduce((data, byte) => data + String.fromCharCode(byte), '')
+  ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 async function sendEmail() {
   const to = document.getElementById('emailTo').value.trim();
   const subject = document.getElementById('emailSubject').value.trim();
@@ -1047,11 +1059,11 @@ async function sendEmail() {
   if (!to) { showToast('请填写收件人邮箱'); return; }
   if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
 
-  // Create Gmail draft via API
-  try {
-    const email = ['To: ' + to, 'Subject: ' + (subject||'(无主题)'), 'Content-Type: text/plain; charset=utf-8', '', body].join('\n');
-    const encoded = btoa(unescape(encodeURIComponent(email))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  // Fix 3: Standard RFC email format
+  const email = `To: ${to}\nSubject: ${subject||'(无主题)'}\nContent-Type: text/plain; charset=utf-8\n\n${body}`;
+  const encoded = base64UrlEncode(email);
 
+  try {
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
       method: 'POST',
       headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
@@ -1059,15 +1071,16 @@ async function sendEmail() {
     });
 
     if (res.ok) {
-      showToast('✓ 邮件已保存到 Gmail 草稿箱');
-      speak('邮件已保存到草稿箱，请在 Gmail 中确认后发送');
+      // Save as draft only - user confirms in Gmail before sending
+      showToast('📩 已保存到 Gmail 草稿箱，请在 Gmail 确认后发送');
+      speak('邮件草稿已保存，请在 Gmail 中确认后发送');
       clearEmail();
     } else {
       const err = await res.json();
       throw new Error(err.error?.message || res.status);
     }
   } catch(e) {
-    showToast('发送失败: ' + e.message);
+    showToast('保存失败: ' + e.message);
   }
 }
 
