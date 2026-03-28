@@ -4,93 +4,573 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 日历助理</title>
-
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
-body {
-  background:#0b0f1a;
-  color:#fff;
-  font-family: Arial;
-  padding:20px;
+:root {
+  --bg:#07090f;--cyan:#00e5ff;--cyan2:#00ffcc;
+  --surface:#0e1220;--surface2:#141928;
+  --border:rgba(0,229,255,0.1);--border2:rgba(0,229,255,0.22);
+  --text:#d0ddf0;--muted:#3d5070;--muted2:#607090;--white:#edf4ff;
+  --warn:#ff5e5e;--gold:#ffc844;
 }
-.container {
-  max-width:500px;
-  margin:auto;
-}
-textarea {
-  width:100%;
-  height:80px;
-  margin-bottom:10px;
-}
-button {
-  padding:10px;
-  cursor:pointer;
-}
-.card {
-  border:1px solid #333;
-  padding:12px;
-  margin-top:10px;
-  border-radius:8px;
-}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+
+.app{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;z-index:1;}
+
+/* Header */
+.header{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,9,15,0.88);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-box{width:32px;height:32px;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));background:rgba(0,229,255,0.06);}
+.logo-box span{font-family:'DM Mono',monospace;font-size:10px;color:var(--cyan);}
+.logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--white);}
+.logo-text em{color:var(--cyan);font-style:normal;}
+.user-info{display:flex;align-items:center;gap:8px;}
+.user-avatar{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--cyan);cursor:pointer;}
+.user-email{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.live-dot{width:7px;height:7px;background:var(--cyan2);border-radius:50%;box-shadow:0 0 8px var(--cyan2);animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* Loading screen */
+.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:16px;}
+.loading-screen .spin{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-screen p{font-size:13px;color:var(--muted2);}
+
+/* Scroll */
+.scroll{flex:1;overflow-y:auto;padding-bottom:100px;}
+.scroll::-webkit-scrollbar{width:0;}
+
+/* Voice section */
+.voice-section{padding:14px;}
+.voice-main{background:linear-gradient(135deg,rgba(0,229,255,0.06),rgba(61,106,255,0.06));border:1px solid var(--border2);border-radius:20px;padding:18px;margin-bottom:12px;}
+.vm-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.mic-ring{width:50px;height:50px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s;flex-shrink:0;}
+.mic-ring.listening{border-color:var(--cyan);box-shadow:0 0 0 0 rgba(0,229,255,0.4);animation:sonar 1.2s ease-out infinite;background:rgba(0,229,255,0.1);}
+@keyframes sonar{0%{box-shadow:0 0 0 0 rgba(0,229,255,0.4);}100%{box-shadow:0 0 0 20px rgba(0,229,255,0);}}
+.vm-info h2{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:2px;}
+.vm-info p{font-size:11px;color:var(--muted2);}
+
+/* Waveform */
+.waveform{display:flex;gap:3px;align-items:center;justify-content:center;height:32px;margin-bottom:12px;}
+.wave-bar{width:3px;background:var(--cyan);border-radius:2px;opacity:.2;}
+.waveform.active .wave-bar{opacity:1;animation:waveAnim 0.8s ease-in-out infinite alternate;}
+.wave-bar:nth-child(1){height:6px;} .wave-bar:nth-child(2){height:14px;} .wave-bar:nth-child(3){height:22px;} .wave-bar:nth-child(4){height:30px;} .wave-bar:nth-child(5){height:18px;} .wave-bar:nth-child(6){height:26px;} .wave-bar:nth-child(7){height:12px;} .wave-bar:nth-child(8){height:20px;} .wave-bar:nth-child(9){height:8px;} .wave-bar:nth-child(10){height:16px;} .wave-bar:nth-child(11){height:24px;} .wave-bar:nth-child(12){height:10px;}
+.waveform.active .wave-bar:nth-child(1){animation-delay:0s;} .waveform.active .wave-bar:nth-child(2){animation-delay:.07s;} .waveform.active .wave-bar:nth-child(3){animation-delay:.14s;} .waveform.active .wave-bar:nth-child(4){animation-delay:.21s;} .waveform.active .wave-bar:nth-child(5){animation-delay:.28s;} .waveform.active .wave-bar:nth-child(6){animation-delay:.35s;} .waveform.active .wave-bar:nth-child(7){animation-delay:.42s;} .waveform.active .wave-bar:nth-child(8){animation-delay:.49s;} .waveform.active .wave-bar:nth-child(9){animation-delay:.56s;} .waveform.active .wave-bar:nth-child(10){animation-delay:.63s;} .waveform.active .wave-bar:nth-child(11){animation-delay:.70s;} .waveform.active .wave-bar:nth-child(12){animation-delay:.77s;}
+@keyframes waveAnim{from{transform:scaleY(.3);}to{transform:scaleY(1.2);}}
+
+/* Transcript */
+.transcript-box{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-height:48px;font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px;}
+.transcript-placeholder{color:var(--muted);font-style:italic;font-size:12px;}
+.transcript-cursor{display:inline-block;width:2px;height:14px;background:var(--cyan);margin-left:2px;vertical-align:middle;animation:blink .8s infinite;}
+
+/* AI result */
+.ai-result{background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:none;}
+.ai-result.show{display:block;animation:slideDown .3s ease;}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+.ai-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ai-label::before{content:'▸';font-size:8px;}
+.ai-event-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.aec-bar{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;}
+.aec-info{flex:1;}
+.aec-title{font-size:12px;font-weight:600;color:var(--white);margin-bottom:2px;}
+.aec-meta{font-size:10px;color:var(--muted2);}
+.aec-btn{padding:5px 12px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:8px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.aec-btn:hover{background:rgba(0,229,255,.2);}
+.aec-btn.added{background:rgba(0,255,204,.1);border-color:rgba(0,255,204,.2);color:var(--cyan2);}
+
+/* Loading bar */
+.loading-bar{display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,229,255,.04);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:11px;color:var(--muted2);}
+.loading-bar.show{display:flex;}
+.spin-sm{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+
+/* Buttons */
+.voice-actions{display:flex;gap:8px;}
+.btn-v{flex:1;padding:11px;border-radius:12px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;letter-spacing:.3px;text-transform:uppercase;}
+.btn-rec{background:var(--cyan);color:var(--bg);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+.btn-rec:hover{box-shadow:0 0 20px rgba(0,229,255,.4);}
+.btn-rec.recording{background:var(--warn);animation:recPulse 1s infinite;}
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,94,94,.4);}50%{box-shadow:0 0 0 8px rgba(255,94,94,0);}}
+.btn-ai{flex:.8;background:rgba(61,106,255,.15);border:1px solid rgba(61,106,255,.3);color:#7a9aff;}
+.btn-ai:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Quick cmds */
+.quick-cmds{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
+.qcmd{font-size:10px;padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--muted2);cursor:pointer;transition:all .2s;font-family:'DM Mono',monospace;}
+.qcmd:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* Gmail scan section */
+.scan-section{padding:0 14px;margin-bottom:14px;}
+.scan-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px;}
+.scan-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.scan-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);}
+.scan-btn{padding:6px 14px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.scan-btn:hover{background:rgba(0,229,255,.15);}
+
+/* Email items */
+.email-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;}
+.email-item:last-child{border-bottom:none;}
+.ei-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.ei-info{flex:1;}
+.ei-from{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.ei-subject{font-size:11px;color:var(--muted2);margin-bottom:4px;}
+.ei-tag{display:inline-flex;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;}
+.tag-cal{background:rgba(0,229,255,.1);color:var(--cyan);}
+.tag-task{background:rgba(255,200,68,.1);color:var(--gold);}
+.ei-add{padding:4px 10px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);border-radius:7px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;margin-left:auto;flex-shrink:0;}
+.ei-add.added{background:rgba(0,255,204,.08);border-color:rgba(0,255,204,.2);color:var(--cyan2);}
+
+/* Calendar */
+.cal-section{padding:0 14px;}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.sec-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);}
+.sec-title::before{content:'// ';color:var(--cyan);opacity:.5;font-family:'DM Mono',monospace;}
+
+/* Week strip */
+.week-strip{display:flex;gap:4px;margin-bottom:12px;}
+.week-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;}
+.week-day.today{background:var(--surface2);border-color:var(--border2);}
+.wd-name{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;}
+.wd-num{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--muted2);}
+.week-day.today .wd-num,.week-day.today .wd-name{color:var(--cyan);}
+.wd-dot{width:4px;height:4px;background:var(--cyan);border-radius:50;margin:0 auto;}
+
+/* Timeline */
+.tl-event{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;display:flex;gap:11px;align-items:center;cursor:pointer;transition:all .2s;margin-bottom:6px;}
+.tl-event:hover{border-color:var(--border2);transform:translateX(2px);}
+.tl-event.src-voice{border-left:3px solid var(--cyan);}
+.tl-event.src-gmail{border-left:3px solid #ea4335;}
+.tl-event.src-manual{border-left:3px solid var(--gold);}
+.tl-t{text-align:center;min-width:40px;flex-shrink:0;}
+.tl-t .h{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--cyan);line-height:1;}
+.tl-t .ap{font-size:9px;color:var(--muted2);text-transform:uppercase;}
+.tl-div{width:1px;background:var(--border);align-self:stretch;}
+.tl-info h4{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--white);margin-bottom:2px;}
+.tl-info p{font-size:10px;color:var(--muted2);}
+.tl-src{margin-left:auto;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap;}
+.src-v{background:rgba(0,229,255,.1);color:var(--cyan);}
+.src-g{background:rgba(234,67,53,.1);color:#ea4335;}
+.src-m{background:rgba(255,200,68,.1);color:var(--gold);}
+
+.empty-cal{text-align:center;padding:24px;border:1px dashed var(--border);border-radius:12px;margin-bottom:8px;}
+.empty-cal p{font-size:12px;color:var(--muted2);}
+
+/* Toast */
+.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface2);border:1px solid rgba(0,229,255,.3);border-radius:10px;padding:8px 16px;font-size:11px;color:var(--cyan);font-weight:500;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(7,9,15,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:10px 0 18px;z-index:100;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:5px;border-radius:10px;margin:0 3px;transition:all .2s;}
+.nav-item.active{background:rgba(0,229,255,.06);}
+.nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
+.nav-lbl{font-size:9px;color:var(--muted2);font-weight:500;text-transform:uppercase;}
+.nav-item.active .nav-lbl{color:var(--cyan);}
 </style>
 </head>
-
 <body>
+<div class="toast" id="toast"></div>
 
-<div class="container">
+<div class="app">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-box"><span>AI</span></div>
+      <div class="logo-text">Cal<em>Voice</em></div>
+    </div>
+    <div class="user-info">
+      <div id="userEmail" class="user-email">未登录</div>
+      <div class="user-avatar" id="userAvatar" onclick="logout()">?</div>
+      <div class="live-dot"></div>
+    </div>
+  </div>
 
-<h2>AI 日历助理（对话版）</h2>
+  <!-- Loading screen -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spin"></div>
+    <p id="loadingMsg">正在连接 Google 账号...</p>
+  </div>
 
-<textarea id="transcriptBox" placeholder="说点什么，比如：下周三下午2点去工地"></textarea>
+  <div class="scroll" id="mainContent" style="display:none">
 
-<button onclick="processTranscript()">发送</button>
+    <!-- Voice -->
+    <div class="voice-section">
+      <div class="voice-main">
+        <div class="vm-top">
+          <div class="mic-ring" id="micRing" onclick="toggleRecording()">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+              <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#00e5ff"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M9 22h6" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="vm-info">
+            <h2 id="voiceStatus">点击麦克风说出日程</h2>
+            <p>AI 自动识别时间地点，加入 Google Calendar</p>
+          </div>
+        </div>
+        <div class="waveform" id="waveform">
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        </div>
+        <div class="transcript-box" id="transcriptBox" 
+          contenteditable="true"
+          oninput="onTranscriptInput()"
+          onclick="if(this.innerHTML.includes('transcript-placeholder')){this.innerHTML='';}"
+          style="cursor:text;outline:none">
+          <span class="transcript-placeholder">点击麦克风说话，或直接在这里打字...</span>
+        </div>
+        <div class="loading-bar" id="loadingBar">
+          <div class="spin-sm"></div>
+          <span id="loadingBarMsg">AI 正在分析...</span>
+        </div>
+        <div class="ai-result" id="aiResult">
+          <div class="ai-label">AI 识别到以下日程</div>
+          <div id="aiEvents"></div>
+        </div>
+        <div class="voice-actions">
+          <button class="btn-v btn-rec" id="recordBtn" onclick="toggleRecording()">🎙 开始录音</button>
+          <button class="btn-v btn-ai" id="processBtn" onclick="processTranscript()" disabled>✦ AI 分析</button>
+        </div>
+        <div class="quick-cmds">
+          <div class="qcmd" onclick="useQuick(this)">"下周一下午2点团队会议"</div>
+          <div class="qcmd" onclick="useQuick(this)">"明天上午10点见客户"</div>
+          <div class="qcmd" onclick="useQuick(this)">"周五下午5点电话跟进"</div>
+        </div>
+      </div>
+    </div>
 
-<div id="loadingBar" style="display:none;margin-top:10px;">AI处理中...</div>
+    <!-- Gmail Scan -->
+    <div class="scan-section">
+      <div class="scan-card">
+        <div class="scan-hd">
+          <div class="scan-title">📧 Gmail 日程扫描</div>
+          <button class="scan-btn" onclick="scanGmail()">扫描邮件</button>
+        </div>
+        <div id="gmailResults">
+          <div style="font-size:12px;color:var(--muted2);text-align:center;padding:16px 0">
+            点击"扫描邮件"自动提取日程信息
+          </div>
+        </div>
+      </div>
+    </div>
 
-<div id="aiResult" style="margin-top:20px;"></div>
+    <!-- Calendar -->
+    <div class="cal-section">
+      <div class="sec-hd">
+        <div class="sec-title">日历</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:11px;color:var(--muted2)" id="calMonth"></div>
+          <div style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="loadCalendar()">🔄 刷新</div>
+        </div>
+      </div>
 
+      <!-- Month navigation -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <button onclick="changeWeek(-1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">← 上周</button>
+        <div style="font-size:12px;color:var(--text);font-weight:600" id="weekLabel"></div>
+        <button onclick="changeWeek(1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">下周 →</button>
+      </div>
+
+      <!-- Week strip -->
+      <div class="week-strip" id="weekStrip"></div>
+
+      <!-- Selected day events -->
+      <div class="sec-hd" style="margin-top:4px">
+        <div class="sec-title" id="selectedDayLabel">今日日程</div>
+        <div style="font-size:11px;color:var(--muted2)" id="eventCount"></div>
+      </div>
+      <div id="calendarEvents">
+        <div class="empty-cal"><p>加载中...</p></div>
+      </div>
+
+      <!-- This week all events -->
+      <div class="sec-hd" style="margin-top:14px">
+        <div class="sec-title">本周全部</div>
+      </div>
+      <div id="weekAllEvents"></div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active">
+      <div class="nav-icon">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#00e5ff" stroke-width="1.8"/><line x1="3" y1="10" x2="21" y2="10" stroke="#00e5ff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="nav-lbl" style="color:var(--cyan)">日历</div>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" stroke="currentColor" stroke-width="1.8"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </div>
+      <div class="nav-lbl">语音</div>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8"/></svg>
+      </div>
+      <div class="nav-lbl">邮件</div>
+    </div>
+    <div class="nav-item">
+      <div class="nav-icon">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="1.8"/></svg>
+      </div>
+      <div class="nav-lbl">提醒</div>
+    </div>
+    <div class="nav-item" onclick="logout()">
+      <div class="nav-icon">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="nav-lbl">退出</div>
+    </div>
+  </div>
 </div>
 
 <script>
+// ── Config ──
+const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
 
-// ===== 原有变量 =====
+// ── Claude API helper ──
+async function callClaude(system, message) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system, message }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('API error ' + res.status + ': ' + err);
+    }
+    const data = await res.json();
+    return data.text;
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('请求超时，请重试');
+    throw e;
+  }
+}
+
+// ── State ──
+let accessToken = null;
+let userInfo = null;
+let isRecording = false;
+let recognition = null;
 let currentTranscript = '';
-let accessToken = localStorage.getItem('gat');
-
-// ===== 新增状态 =====
+let localEvents = [];
 let conversationMode = false;
 let currentDraftEvent = null;
 
-// ===== Claude =====
-async function callClaude(system, message) {
-  const res = await fetch('/api/claude', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({system,message})
-  });
-  const data = await res.json();
-  return data.text;
+// ── Auth ──
+window.addEventListener('load', async () => {
+  const hash = window.location.hash;
+  const stored = localStorage.getItem('gat');
+
+  if (hash && hash.includes('access_token')) {
+    const hashParams = new URLSearchParams(hash.substring(1));
+    accessToken = hashParams.get('access_token');
+    if (accessToken) {
+      localStorage.setItem('gat', accessToken);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      await initApp();
+      return;
+    }
+  }
+  
+  if (stored && stored !== 'null' && stored !== 'undefined') {
+    accessToken = stored;
+    await initApp();
+    return;
+  }
+
+  document.getElementById('loadingMsg').textContent = '跳转到登录页...';
+  setTimeout(() => { window.location.href = 'auth.html'; }, 1000);
+});
+
+async function initApp() {
+  document.getElementById('loadingMsg').textContent = '正在获取账号信息...';
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('UserInfo error:', res.status, errText);
+      localStorage.removeItem('gat');
+      document.getElementById('loadingMsg').textContent = '登录已过期，重新登录...';
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+      return;
+    }
+    
+    userInfo = await res.json();
+    console.log('User:', userInfo.email);
+
+    document.getElementById('userEmail').textContent = userInfo.email || '';
+    document.getElementById('userAvatar').textContent = userInfo.name ? userInfo.name[0].toUpperCase() : '?';
+    if (userInfo.picture) {
+      const av = document.getElementById('userAvatar');
+      av.style.backgroundImage = `url(${userInfo.picture})`;
+      av.style.backgroundSize = 'cover';
+      av.style.fontSize = '0';
+    }
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+
+    buildWeekStrip();
+    initSpeech();
+    showToast(`✓ 已连接 ${userInfo.email}`);
+    loadCalendar().catch(e => console.error('Calendar load error:', e));
+    
+  } catch(e) {
+    console.error('initApp error:', e);
+    document.getElementById('loadingMsg').textContent = '连接失败: ' + e.message;
+    setTimeout(() => {
+      localStorage.removeItem('gat');
+      window.location.href = 'auth.html';
+    }, 3000);
+  }
 }
 
-// ===== 工具 =====
-function clean(t){
-  return t.replace(/```json|```/g,'').trim();
+function logout() {
+  localStorage.removeItem('gat');
+  window.location.href = 'auth.html';
+}
+// ── Speech ──
+function initSpeech() {
+  try {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    recognition = new SR();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          final += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      currentTranscript = final || interim;
+      updateTranscriptDisplay(interim && !final ? interim : null);
+    };
+
+    recognition.onerror = (e) => {
+      console.error('Speech error:', e);
+      stopRecording();
+      showToast('语音识别失败');
+    };
+
+    recognition.onend = () => {
+      if (isRecording) recognition.start();
+    };
+  } catch (e) {
+    console.error('Speech init failed:', e);
+  }
 }
 
-function isModification(text){
-  return ['改','换','调整','推迟','提前'].some(w=>text.includes(w));
+function toggleRecording() {
+  if (!recognition) return showToast('浏览器不支持语音识别');
+
+  if (!isRecording) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        stream.getTracks().forEach(t => t.stop());
+        startRecording();
+      })
+      .catch(() => showToast('需要麦克风权限'));
+  } else {
+    stopRecording();
+  }
 }
 
-// ===== 主逻辑 =====
-async function processTranscript(){
+function startRecording() {
+  isRecording = true;
+  recognition.start();
+  document.getElementById('micRing').classList.add('listening');
+  document.getElementById('waveform').classList.add('active');
+  document.getElementById('recordBtn').textContent = '⏹ 停止录音';
+  document.getElementById('recordBtn').classList.add('recording');
+  document.getElementById('voiceStatus').textContent = '正在听...';
+  clearTranscript();
+}
 
-  currentTranscript = transcriptBox.value.trim();
-  if(!currentTranscript) return;
+function stopRecording() {
+  isRecording = false;
+  recognition.stop();
+  document.getElementById('micRing').classList.remove('listening');
+  document.getElementById('waveform').classList.remove('active');
+  document.getElementById('recordBtn').textContent = '🎙 开始录音';
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('voiceStatus').textContent = '点击麦克风说出日程';
 
-  loadingBar.style.display = 'block';
+  if (currentTranscript.trim()) {
+    document.getElementById('processBtn').disabled = false;
+    showToast('✓ 识别完成，点击 AI 分析');
+  }
+}
+
+// ── Transcript ──
+function updateTranscriptDisplay(interimText = null) {
+  const box = document.getElementById('transcriptBox');
+  
+  if (interimText) {
+    box.innerHTML = `<span>${interimText}</span><span class="transcript-cursor"></span>`;
+  } else if (currentTranscript) {
+    box.textContent = currentTranscript;
+  }
+}
+
+function clearTranscript() {
+  currentTranscript = '';
+  const box = document.getElementById('transcriptBox');
+  box.innerHTML = '<span class="transcript-placeholder">点击麦克风说话，或直接在这里打字...</span>';
+  document.getElementById('processBtn').disabled = true;
+}
+
+function onTranscriptInput() {
+  const text = document.getElementById('transcriptBox').innerText.trim();
+  currentTranscript = text;
+  document.getElementById('processBtn').disabled = !text;
+}
+
+function useQuick(el) {
+  const text = el.innerText.replace(/"/g, '');
+  currentTranscript = text;
+  document.getElementById('transcriptBox').textContent = text;
+  document.getElementById('processBtn').disabled = false;
+}
+
+// ── 对话辅助 ──
+function isModification(text) {
+  return ['改','换','调整','推迟','提前','延后'].some(w => text.includes(w));
+}
+
+// ── 核心 AI 逻辑（升级版） ──
+async function processTranscript() {
+  if (!currentTranscript) return;
+
+  document.getElementById('aiResult').classList.remove('show');
+  document.getElementById('processBtn').disabled = true;
+
+  document.getElementById('loadingBar').classList.add('show');
+  document.getElementById('loadingBarMsg').textContent = 'AI 正在分析...';
 
   try {
 
-    // ===== 修改 =====
+    // ===== 修改逻辑 =====
     if (isModification(currentTranscript) && currentDraftEvent) {
 
       const raw = await callClaude(
@@ -104,43 +584,49 @@ ${currentTranscript}
 {"event":{}}`
       );
 
-      const obj = JSON.parse(clean(raw));
+      const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
       currentDraftEvent = obj.event;
 
-      loadingBar.style.display = 'none';
+      document.getElementById('loadingBar').classList.remove('show');
 
-      speak("已修改");
-      showEvent(currentDraftEvent);
+      speak(`已修改为 ${obj.event.date} ${obj.event.time}`);
+      showAIResults([obj.event]);
       return;
     }
 
-    // ===== 对话补充 =====
+    // ===== 对话模式 =====
     if (conversationMode) {
 
       const raw = await callClaude(
-`当前事件：
+`你是日历助手。
+
+当前事件：
 ${JSON.stringify(currentDraftEvent)}
 
 用户补充：
 ${currentTranscript}
 
 返回JSON：
-{"complete":true,"event":{},"reply":""}`
+{
+ "complete": true/false,
+ "event": {...},
+ "reply": ""
+}`
       );
 
-      const obj = JSON.parse(clean(raw));
+      const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
       currentDraftEvent = obj.event;
 
       if (!obj.complete) {
-        loadingBar.style.display = 'none';
+        document.getElementById('loadingBar').classList.remove('show');
         speak(obj.reply);
         return;
       }
 
       conversationMode = false;
 
-      loadingBar.style.display = 'none';
-      showEvent(obj.event);
+      document.getElementById('loadingBar').classList.remove('show');
+      showAIResults([obj.event]);
       return;
     }
 
@@ -159,79 +645,292 @@ ${currentTranscript}
    "people":"",
    "location":""
  },
- "reply":"如果缺信息就问"
+ "reply":""
 }`,
     currentTranscript);
 
-    const obj = JSON.parse(clean(raw));
+    const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
     currentDraftEvent = obj.event;
 
     if (!obj.complete) {
       conversationMode = true;
-      loadingBar.style.display = 'none';
+
+      document.getElementById('loadingBar').classList.remove('show');
       speak(obj.reply);
       return;
     }
 
-    loadingBar.style.display = 'none';
-    showEvent(obj.event);
+    document.getElementById('loadingBar').classList.remove('show');
+    showAIResults([obj.event]);
 
-  } catch(e){
-    loadingBar.style.display = 'none';
-    alert("AI错误：" + e.message);
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loadingBar').classList.remove('show');
+    showToast('AI 分析失败');
+  }
+}
+// ── Calendar ──
+async function loadCalendar() {
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=50&orderBy=startTime&singleEvents=true',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const data = await res.json();
+    localEvents = data.items || [];
+
+    renderCalendar();
+  } catch (e) {
+    console.error('Calendar load error:', e);
+    showToast('日历加载失败');
   }
 }
 
-// ===== UI展示 =====
-function showEvent(ev){
+function renderCalendar() {
+  const container = document.getElementById('calendarEvents');
 
-  aiResult.innerHTML = `
-  <div class="card">
-    <b>${ev.title}</b><br>
-    ${ev.date} ${ev.time}<br>
-    ${ev.people||''} ${ev.location||''}
-    <br><br>
-    <button onclick="confirmAdd()">加入日历</button>
-  </div>`;
+  if (!localEvents.length) {
+    container.innerHTML = '<div class="empty-cal"><p>暂无日程</p></div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  localEvents.forEach(ev => {
+    const start = new Date(ev.start.dateTime || ev.start.date);
+
+    const el = document.createElement('div');
+    el.className = 'tl-event';
+
+    el.innerHTML = `
+      <div class="tl-t">
+        <div class="h">${start.getHours()}</div>
+        <div class="ap">${start.getMinutes()}</div>
+      </div>
+      <div class="tl-div"></div>
+      <div class="tl-info">
+        <h4>${ev.summary || '无标题'}</h4>
+        <p>${start.toLocaleDateString()}</p>
+      </div>
+    `;
+
+    container.appendChild(el);
+  });
 }
 
-// ===== 写入日历 =====
-async function confirmAdd(){
+// ── 写入日历 ──
+async function addVoiceEvent(btn, idx) {
+  const ev = window._pendingEvents[idx];
 
-  const ev = currentDraftEvent;
+  const [h, m] = ev.time.split(':');
 
-  const [h,m] = ev.time.split(':');
-
-  const d = new Date(ev.date.replace(/年|月/g,'-').replace('日',''));
+  const d = new Date(ev.date.replace(/年|月/g, '-').replace('日', ''));
 
   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
 
-  await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-    method:'POST',
-    headers:{
-      Authorization:`Bearer ${accessToken}`,
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify({
-      summary: ev.title,
-      start:{dateTime:start.toISOString(), timeZone:'Australia/Sydney'},
-      end:{dateTime:new Date(start.getTime()+3600000).toISOString(), timeZone:'Australia/Sydney'}
-    })
-  });
+  try {
+    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        summary: ev.title,
+        description: `${ev.people || ''} ${ev.location || ''}`,
+        start: {
+          dateTime: start.toISOString(),
+          timeZone: 'Australia/Sydney'
+        },
+        end: {
+          dateTime: new Date(start.getTime() + 3600000).toISOString(),
+          timeZone: 'Australia/Sydney'
+        }
+      })
+    });
 
-  speak("已加入日历");
+    btn.textContent = '✓ 已添加';
+    btn.classList.add('added');
 
-  conversationMode = false;
-  currentDraftEvent = null;
+    speak('已加入日历');
+    loadCalendar();
+
+    conversationMode = false;
+    currentDraftEvent = null;
+
+  } catch (e) {
+    console.error(e);
+    showToast('添加失败');
+  }
 }
 
-// ===== 语音反馈 =====
-function speak(text){
+// ── AI结果展示 ──
+function showAIResults(events) {
+  const container = document.getElementById('aiEvents');
+  container.innerHTML = '';
+
+  window._pendingEvents = events;
+
+  events.forEach((ev, i) => {
+    const el = document.createElement('div');
+    el.className = 'ai-event-card';
+
+    el.innerHTML = `
+      <div class="aec-bar"></div>
+      <div class="aec-info">
+        <div class="aec-title">${ev.title}</div>
+        <div class="aec-meta">${ev.date} ${ev.time} · ${ev.duration || 60}分钟</div>
+      </div>
+      <button class="aec-btn" onclick="addVoiceEvent(this, ${i})">+ 加入</button>
+    `;
+
+    container.appendChild(el);
+  });
+
+  document.getElementById('aiResult').classList.add('show');
+}
+
+// ── Gmail扫描 ──
+async function scanGmail() {
+  showToast('正在扫描邮件...');
+
+  try {
+    const res = await fetch(
+      'https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=5',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    const data = await res.json();
+    const container = document.getElementById('gmailResults');
+
+    if (!data.messages || !data.messages.length) {
+      container.innerHTML = '<div style="color:var(--muted2)">暂无邮件</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+
+    for (let msg of data.messages) {
+      const mres = await fetch(
+        `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      const mdata = await mres.json();
+
+      const subject = mdata.payload.headers.find(h => h.name === 'Subject')?.value || '无标题';
+
+      const el = document.createElement('div');
+      el.className = 'email-item';
+
+      el.innerHTML = `
+        <div class="ei-dot"></div>
+        <div class="ei-info">
+          <div class="ei-from">${subject}</div>
+          <div class="ei-subject">邮件内容分析中...</div>
+          <span class="ei-tag tag-cal">日程</span>
+        </div>
+        <button class="ei-add">+ 添加</button>
+      `;
+
+      container.appendChild(el);
+    }
+
+  } catch (e) {
+    console.error(e);
+    showToast('邮件扫描失败');
+  }
+}
+// ── Week UI ──
+let currentWeekOffset = 0;
+let selectedDate = new Date();
+
+function buildWeekStrip() {
+  const container = document.getElementById('weekStrip');
+  container.innerHTML = '';
+
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay() + currentWeekOffset * 7);
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+
+    const el = document.createElement('div');
+    el.className = 'week-day';
+
+    if (d.toDateString() === new Date().toDateString()) {
+      el.classList.add('today');
+    }
+
+    el.innerHTML = `
+      <div class="wd-name">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
+      <div class="wd-num">${d.getDate()}</div>
+      <div class="wd-dot"></div>
+    `;
+
+    el.onclick = () => {
+      selectedDate = d;
+      renderCalendar();
+    };
+
+    container.appendChild(el);
+  }
+
+  document.getElementById('weekLabel').textContent =
+    start.toLocaleDateString();
+}
+
+function changeWeek(offset) {
+  currentWeekOffset += offset;
+  buildWeekStrip();
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── Speak ──
+function speak(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'zh-CN';
   speechSynthesis.speak(u);
 }
 
+// ── Utility ──
+function parseDate(str) {
+  return new Date(str.replace(/年|月/g, '-').replace('日', ''));
+}
+
+// ── 页面加载 fallback（保险） ──
+setTimeout(() => {
+  if (!accessToken) {
+    document.getElementById('loadingMsg').textContent = '未检测到登录状态';
+  }
+}, 5000);
+
+// ── Debug（你以后可以删） ──
+console.log('APP FULL LOADED');
+
+// ── 防止未处理错误炸掉 ──
+window.onerror = function(msg, url, line) {
+  console.error('Global Error:', msg, url, line);
+  showToast('系统异常');
+};
+
+// ── 防止 Promise 崩溃 ──
+window.addEventListener('unhandledrejection', function(e) {
+  console.error('Unhandled Promise:', e.reason);
+});
+
+// ── END ──
 </script>
 
 </body>
