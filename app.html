@@ -236,13 +236,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <button onclick="startEmailRec()" id="emailRecBtn" style="flex:1;padding:10px;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);color:var(--cyan);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🎙 口述邮件内容</button>
         <button onclick="aiWriteEmail()" id="aiEmailBtn" style="flex:1;padding:10px;background:rgba(61,106,255,0.15);border:1px solid rgba(61,106,255,0.3);color:#7a9aff;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;" disabled>✦ AI 润色</button>
       </div>
-      <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:120px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:10px;">
-        <span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>
+      <!-- Action buttons at TOP - always visible -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="sendEmail()" style="flex:2;padding:13px;background:var(--cyan);color:var(--bg);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">💾 保存到 Gmail 草稿</button>
+        <button onclick="clearEmail()" style="flex:1;padding:13px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:12px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">🗑 清除</button>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="saveEmailDraft()" style="flex:2;padding:11px;background:var(--cyan);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));">💾 保存草稿</button>
-        <button onclick="sendEmail()" style="flex:2;padding:11px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.25);color:var(--cyan);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">📤 确认发送</button>
-        <button onclick="clearEmail()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">清除</button>
+      <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:120px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:8px;">
+        <span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>
       </div>
     </div>
     <!-- Saved drafts -->
@@ -1070,16 +1070,27 @@ async function sendEmail() {
       body: JSON.stringify({ message: { raw: encoded } })
     });
 
+    const resText = await res.text();
+    console.log('Gmail API status:', res.status, resText.slice(0,200));
+
     if (res.ok) {
-      // Save as draft only - user confirms in Gmail before sending
-      showToast('📩 已保存到 Gmail 草稿箱，请在 Gmail 确认后发送');
-      speak('邮件草稿已保存，请在 Gmail 中确认后发送');
+      showToast('📩 已保存到 Gmail 草稿箱！');
+      speak('邮件草稿已保存');
       clearEmail();
+    } else if (res.status === 401) {
+      showToast('权限不足，请重新登录');
+      localStorage.clear();
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+    } else if (res.status === 403) {
+      showToast('没有Gmail权限，请重新登录授权');
+      localStorage.clear();
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
     } else {
-      const err = await res.json();
-      throw new Error(err.error?.message || res.status);
+      const err = JSON.parse(resText);
+      throw new Error(err.error?.message || '状态码: ' + res.status);
     }
   } catch(e) {
+    console.error('Gmail draft error:', e);
     showToast('保存失败: ' + e.message);
   }
 }
