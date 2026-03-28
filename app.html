@@ -313,51 +313,78 @@ let localEvents = [];
 
 // ── Auth ──
 window.addEventListener('load', async () => {
-  // Check for OAuth callback (token in hash or code in URL)
   const hash = window.location.hash;
-  const params = new URLSearchParams(window.location.search);
+  const stored = localStorage.getItem('gat');
 
-  if (hash.includes('access_token')) {
+  if (hash && hash.includes('access_token')) {
     const hashParams = new URLSearchParams(hash.substring(1));
     accessToken = hashParams.get('access_token');
-    localStorage.setItem('gat', accessToken);
-    // Clean URL without reload
-    history.replaceState(null, '', window.location.pathname);
-    await initApp();
-  } else if (localStorage.getItem('gat')) {
-    accessToken = localStorage.getItem('gat');
-    await initApp();
-  } else {
-    window.location.href = 'auth.html';
+    if (accessToken) {
+      localStorage.setItem('gat', accessToken);
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+      await initApp();
+      return;
+    }
   }
+  
+  if (stored && stored !== 'null' && stored !== 'undefined') {
+    accessToken = stored;
+    await initApp();
+    return;
+  }
+
+  // No token found - show debug info before redirecting
+  document.getElementById('loadingMsg').textContent = '跳转到登录页...';
+  setTimeout(() => { window.location.href = 'auth.html'; }, 1000);
 });
 
 async function initApp() {
   document.getElementById('loadingMsg').textContent = '正在获取账号信息...';
   try {
-    // Get user info
     const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-    if (!res.ok) throw new Error('Token expired');
+    
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('UserInfo error:', res.status, errText);
+      // Token might be expired - clear and redirect
+      localStorage.removeItem('gat');
+      document.getElementById('loadingMsg').textContent = '登录已过期，重新登录...';
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+      return;
+    }
+    
     userInfo = await res.json();
+    console.log('User:', userInfo.email);
 
-    document.getElementById('userEmail').textContent = userInfo.email;
+    document.getElementById('userEmail').textContent = userInfo.email || '';
     document.getElementById('userAvatar').textContent = userInfo.name ? userInfo.name[0].toUpperCase() : '?';
     if (userInfo.picture) {
-      document.getElementById('userAvatar').style.cssText += `;background-image:url(${userInfo.picture});background-size:cover;font-size:0;`;
+      const av = document.getElementById('userAvatar');
+      av.style.backgroundImage = `url(${userInfo.picture})`;
+      av.style.backgroundSize = 'cover';
+      av.style.fontSize = '0';
     }
 
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
 
     buildWeekStrip();
-    await loadCalendar();
     initSpeech();
     showToast(`✓ 已连接 ${userInfo.email}`);
+    
+    // Load calendar in background - don't block UI
+    loadCalendar().catch(e => console.error('Calendar load error:', e));
+    
   } catch(e) {
-    localStorage.removeItem('gat');
-    window.location.href = 'auth.html';
+    console.error('initApp error:', e);
+    document.getElementById('loadingMsg').textContent = '连接失败: ' + e.message;
+    // Don't redirect immediately - show error
+    setTimeout(() => {
+      localStorage.removeItem('gat');
+      window.location.href = 'auth.html';
+    }, 3000);
   }
 }
 
