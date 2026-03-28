@@ -1,18 +1,19 @@
-export const config = { maxDuration: 30 }; // 30 second timeout
+export const config = { maxDuration: 30 };
  
 export default async function handler(req, res) {
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
  
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
  
-  const { system, message } = req.body;
+  const { system, message, messages } = req.body;
  
-  if (!message) {
+  // Support both single message and messages array (for conversation memory)
+  const msgs = messages || [{ role: 'user', content: message }];
+ 
+  if (!msgs || msgs.length === 0) {
     return res.status(400).json({ error: 'Message required' });
   }
  
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system: system || 'You are a helpful assistant.',
-        messages: [{ role: 'user', content: message }]
+        messages: msgs
       })
     });
  
@@ -47,3 +48,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+ 
