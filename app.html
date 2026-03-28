@@ -333,6 +333,34 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 
 // ── Claude API helper ──
 async function callClaude(system, message) {
+  try {
+
+    // 🔥 自动兜底（关键）
+    const finalMessage = message || system || " ";
+
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: system || "你是AI助手",
+        message: finalMessage
+      })
+    });
+
+    const text = await res.text();
+
+    // 🔥 防止返回不是JSON
+    try {
+      return JSON.parse(text).text;
+    } catch {
+      return text;
+    }
+
+  } catch (e) {
+    console.error("Claude error:", e);
+    throw e;
+  }
+}
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
 
