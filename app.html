@@ -211,8 +211,12 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
         <div class="waveform" id="waveform">
           <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
         </div>
-        <div class="transcript-box" id="transcriptBox">
-          <span class="transcript-placeholder">你说的内容会出现在这里...</span>
+        <div class="transcript-box" id="transcriptBox" 
+          contenteditable="true"
+          oninput="onTranscriptInput()"
+          onclick="if(this.innerHTML.includes('transcript-placeholder')){this.innerHTML='';}"
+          style="cursor:text;outline:none">
+          <span class="transcript-placeholder">点击麦克风说话，或直接在这里打字...</span>
         </div>
         <div class="loading-bar" id="loadingBar">
           <div class="spin-sm"></div>
@@ -252,13 +256,37 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <!-- Calendar -->
     <div class="cal-section">
       <div class="sec-hd">
-        <div class="sec-title">今日日程</div>
-        <div style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="loadCalendar()">刷新</div>
+        <div class="sec-title">日历</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="font-size:11px;color:var(--muted2)" id="calMonth"></div>
+          <div style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="loadCalendar()">🔄 刷新</div>
+        </div>
       </div>
+
+      <!-- Month navigation -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <button onclick="changeWeek(-1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">← 上周</button>
+        <div style="font-size:12px;color:var(--text);font-weight:600" id="weekLabel"></div>
+        <button onclick="changeWeek(1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">下周 →</button>
+      </div>
+
+      <!-- Week strip -->
       <div class="week-strip" id="weekStrip"></div>
+
+      <!-- Selected day events -->
+      <div class="sec-hd" style="margin-top:4px">
+        <div class="sec-title" id="selectedDayLabel">今日日程</div>
+        <div style="font-size:11px;color:var(--muted2)" id="eventCount"></div>
+      </div>
       <div id="calendarEvents">
         <div class="empty-cal"><p>加载中...</p></div>
       </div>
+
+      <!-- This week all events -->
+      <div class="sec-hd" style="margin-top:14px">
+        <div class="sec-title">本周全部</div>
+      </div>
+      <div id="weekAllEvents"></div>
     </div>
 
   </div>
@@ -305,14 +333,28 @@ const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googl
 
 // ── Claude API helper ──
 async function callClaude(system, message) {
-  const res = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system, message })
-  });
-  if (!res.ok) throw new Error('API error: ' + res.status);
-  const data = await res.json();
-  return data.text;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system, message }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('API error ' + res.status + ': ' + err);
+    }
+    const data = await res.json();
+    return data.text;
+  } catch(e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') throw new Error('请求超时，请重试');
+    throw e;
+  }
 }
 
 // ── State ──
@@ -411,18 +453,47 @@ async function loadCalendar() {
   container.innerHTML = '<div class="empty-cal"><p>加载中...</p></div>';
 
   try {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+    const today = new Date();
+    const dow = today.getDay();
+    const off = (dow === 0 ? -6 : 1 - dow) + (currentWeekOffset * 7);
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() + off);
+    weekStart.setHours(0,0,0,0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
 
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime`,
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${weekStart.toISOString()}&timeMax=${weekEnd.toISOString()}&singleEvents=true&orderBy=startTime`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const data = await res.json();
-    const events = data.items || [];
-    renderCalendarEvents(events);
+    allWeekEvents = data.items || [];
+
+    // Update dots on week strip
+    const today2 = new Date();
+    document.querySelectorAll('.week-day').forEach((el, i) => {
+      const d = new Date(today2);
+      d.setDate(today2.getDate() + off + i);
+      const hasDot = allWeekEvents.some(ev => {
+        const start = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date);
+        return start.toDateString() === d.toDateString();
+      });
+      const dot = document.getElementById('dot' + i);
+      if (dot) dot.style.visibility = hasDot ? 'visible' : 'hidden';
+    });
+
+    // Show selected day events
+    const selDayEvents = allWeekEvents.filter(e => {
+      const start = e.start.dateTime || e.start.date;
+      return new Date(start).toDateString() === selectedDate.toDateString();
+    });
+    renderDayEvents(selDayEvents);
+
+    // Show week overview
+    renderWeekAll(allWeekEvents);
+
   } catch(e) {
+    console.error('Calendar load error:', e);
     container.innerHTML = '<div class="empty-cal"><p>加载失败，请刷新重试</p></div>';
   }
 }
@@ -789,10 +860,11 @@ async function processTranscript() {
     const events = JSON.parse(clean);
     showAIResults(events);
   } catch(e) {
-    // Fallback
-    showAIResults([{ title: currentTranscript.slice(0,15), date:'今天', time:'10:00', duration:60, people:'', location:'', priority:'normal' }]);
+    console.error('processTranscript error:', e);
+    document.getElementById('loadingBar').classList.remove('show');
+    document.getElementById('processBtn').disabled = false;
+    showToast('分析失败：' + e.message);
   }
-  document.getElementById('loadingBar').classList.remove('show');
 }
 
 function showAIResults(events) {
@@ -896,22 +968,160 @@ ${conflictNames}
   }
 }
 
+// ── Calendar State ──
+let currentWeekOffset = 0;
+let selectedDate = new Date();
+let allWeekEvents = [];
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  buildWeekStrip();
+  loadCalendar();
+}
+
 // ── Week Strip ──
 function buildWeekStrip() {
   const strip = document.getElementById('weekStrip');
+  strip.innerHTML = '';
   const days = ['一','二','三','四','五','六','日'];
   const today = new Date();
   const dow = today.getDay();
-  const off = dow === 0 ? -6 : 1 - dow;
+  const off = (dow === 0 ? -6 : 1 - dow) + (currentWeekOffset * 7);
+
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + off);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const wl = document.getElementById('weekLabel');
+  if (wl) wl.textContent = `${monday.getMonth()+1}月${monday.getDate()}日 — ${sunday.getMonth()+1}月${sunday.getDate()}日`;
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + off + i);
     const isToday = d.toDateString() === today.toDateString();
+    const isSelected = d.toDateString() === selectedDate.toDateString();
+
+    // Count events for this day (will be updated after load)
     const el = document.createElement('div');
     el.className = 'week-day' + (isToday ? ' today' : '');
-    el.innerHTML = `<div class="wd-name">周${days[i]}</div><div class="wd-num">${d.getDate()}</div>`;
+    if (isSelected) el.style.cssText = 'background:var(--surface2);border-color:rgba(0,229,255,0.3)';
+    el.innerHTML = `<div class="wd-name">周${days[i]}</div><div class="wd-num">${d.getDate()}</div><div class="wd-dot" id="dot${i}" style="visibility:hidden"></div>`;
+    el.dataset.date = d.toDateString();
+    const captured = new Date(d);
+    el.onclick = () => selectDay(captured, el);
     strip.appendChild(el);
   }
+}
+
+function selectDay(date, el) {
+  selectedDate = date;
+  document.querySelectorAll('.week-day').forEach(w => {
+    if (!w.classList.contains('today')) {
+      w.style.background = '';
+      w.style.borderColor = '';
+    }
+  });
+  el.style.background = 'var(--surface2)';
+  el.style.borderColor = 'rgba(0,229,255,0.3)';
+
+  const dayEvents = allWeekEvents.filter(e => {
+    const start = e.start.dateTime || e.start.date;
+    if (!start) return false;
+    return new Date(start).toDateString() === date.toDateString();
+  });
+
+  const days = ['周日','周一','周二','周三','周四','周五','周六'];
+  const lbl = document.getElementById('selectedDayLabel');
+  if (lbl) lbl.textContent = `${date.getMonth()+1}月${date.getDate()}日 ${days[date.getDay()]}`;
+  renderDayEvents(dayEvents);
+}
+
+function renderDayEvents(events) {
+  const container = document.getElementById('calendarEvents');
+  const count = document.getElementById('eventCount');
+  if (count) count.textContent = events.length ? `${events.length} 个` : '';
+
+  if (events.length === 0) {
+    container.innerHTML = '<div class="empty-cal"><p>这天没有日程 🎉<br>用语音说出来就能添加</p></div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  events.sort((a,b) => {
+    const ta = a.start.dateTime || a.start.date || '';
+    const tb = b.start.dateTime || b.start.date || '';
+    return ta.localeCompare(tb);
+  });
+
+  events.forEach(ev => {
+    const startDT = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
+    const endDT = ev.end.dateTime ? new Date(ev.end.dateTime) : null;
+    const timeStr = startDT ? startDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '全天';
+    const endStr = endDT ? endDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+    const hour = startDT ? startDT.getHours() : 0;
+    const displayH = hour > 12 ? hour - 12 : hour;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+
+    const el = document.createElement('div');
+    el.className = 'tl-event src-gmail';
+    el.innerHTML = `
+      <div class="tl-t">
+        <div class="h">${startDT ? displayH+':'+String(startDT.getMinutes()).padStart(2,'0') : '全'}</div>
+        <div class="ap">${startDT ? ampm : '天'}</div>
+      </div>
+      <div class="tl-div"></div>
+      <div class="tl-info">
+        <h4>${ev.summary || '无标题'}</h4>
+        <p>${endStr ? timeStr+'–'+endStr : ''} ${ev.location ? '· '+ev.location : ''}</p>
+      </div>
+      <div class="tl-src src-g">Calendar</div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function renderWeekAll(events) {
+  const container = document.getElementById('weekAllEvents');
+  if (!container) return;
+
+  if (events.length === 0) {
+    container.innerHTML = '<div class="empty-cal"><p>本周暂无日程</p></div>';
+    return;
+  }
+
+  // Group by day
+  const groups = {};
+  const dayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  events.forEach(ev => {
+    const start = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date);
+    const key = start.toDateString();
+    if (!groups[key]) groups[key] = { date: start, events: [] };
+    groups[key].events.push(ev);
+  });
+
+  container.innerHTML = '';
+  Object.values(groups).sort((a,b) => a.date - b.date).forEach(group => {
+    const dayEl = document.createElement('div');
+    dayEl.style.cssText = 'margin-bottom:10px';
+    dayEl.innerHTML = `<div style="font-size:10px;color:var(--cyan);font-family:DM Mono,monospace;letter-spacing:1px;margin-bottom:6px;padding:0 2px">${group.date.getMonth()+1}月${group.date.getDate()}日 ${dayNames[group.date.getDay()]}</div>`;
+
+    group.events.forEach(ev => {
+      const startDT = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
+      const timeStr = startDT ? startDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '全天';
+      const evEl = document.createElement('div');
+      evEl.className = 'upcoming-chip';
+      evEl.style.marginBottom = '5px';
+      evEl.innerHTML = `
+        <div class="uc-dot" style="background:#ea4335"></div>
+        <div class="uc-text">
+          <div class="uc-title">${ev.summary || '无标题'}</div>
+          <div class="uc-time">${timeStr} ${ev.location ? '· '+ev.location : ''}</div>
+        </div>
+      `;
+      dayEl.appendChild(evEl);
+    });
+    container.appendChild(dayEl);
+  });
 }
 
 // ── Toast ──
@@ -920,6 +1130,18 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Manual text input fallback ──
+function onTranscriptInput() {
+  const box = document.getElementById('transcriptBox');
+  const text = box.innerText.trim();
+  currentTranscript = text;
+  if (text && text !== '点击麦克风说话，或直接在这里打字...') {
+    document.getElementById('processBtn').disabled = false;
+  } else {
+    document.getElementById('processBtn').disabled = true;
+  }
 }
 
 // ── Voice Reply (Text to Speech) ──
@@ -1030,8 +1252,11 @@ async function answerQuestion(question) {
     document.getElementById('aiResult').classList.add('show');
 
   } catch(e) {
+    console.error('answerQuestion error:', e);
     document.getElementById('loadingBar').classList.remove('show');
-    speak('抱歉，查询日历时出现问题，请稍后再试。');
+    const errMsg = e.message.includes('超时') ? '查询超时，请重试' : '查询失败，请重试';
+    showToast(errMsg);
+    speak(errMsg);
   }
 }
 </script>
