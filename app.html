@@ -331,74 +331,60 @@ function resolveKey(key) {
 }
 
 // ── Auth ──
-window.addEventListener('load', async () => {
-  const dbg = document.getElementById('loadingDebug');
-
-  // Method 1: Token in URL hash (from callback.html backup)
+window.addEventListener('load', () => {
   const hash = window.location.hash;
+
+  // Token from URL hash (fresh login via callback.html)
   if (hash && hash.includes('gat=')) {
-    const t = hash.split('gat=')[1];
+    const t = hash.split('gat=')[1].split('&')[0];
     if (t && t.length > 10) {
       token = t;
-      try {
-        localStorage.setItem('gat', t);
-        localStorage.setItem('gat_time', Date.now().toString());
-      } catch(e) {}
+      localStorage.setItem('gat', t);
+      localStorage.setItem('gat_time', Date.now().toString());
       history.replaceState(null, '', window.location.pathname);
-      dbg.textContent = 'Token from URL, verifying...';
-      await checkTokenAndInit();
+      checkTokenAndInit();
       return;
     }
   }
 
-  // Method 2: Token in localStorage
+  // Token from localStorage
   const stored = localStorage.getItem('gat');
   if (stored && stored.length > 10) {
     token = stored;
-    dbg.textContent = 'Token from storage, verifying...';
-    await checkTokenAndInit();
+    checkTokenAndInit();
     return;
   }
 
   // No token
-  dbg.textContent = '无Token，跳转登录...';
-  setTimeout(() => { window.location.href = 'auth.html'; }, 300);
+  window.location.href = 'auth.html';
 });
 
-// Safety net removed - was interfering with login
-
 async function checkTokenAndInit() {
+  document.getElementById('loadingMsg').textContent = '验证登录状态...';
   try {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 15000);
-    
-    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: 'Bearer ' + token },
-      signal: controller.signal
+    // Fix 3: Use recommended OpenID Connect endpoint
+    const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+      headers: { Authorization: 'Bearer ' + token }
     });
 
-    if (!res.ok) {
-      throw new Error('Token invalid: ' + res.status);
-    }
+    if (!res.ok) throw new Error('token invalid: ' + res.status);
 
     const u = await res.json();
     document.getElementById('userEmail').textContent = u.email || '';
     const av = document.getElementById('userAvatar');
-    av.textContent = u.name ? u.name[0].toUpperCase() : '✓';
+    if (u.name) av.textContent = u.name[0].toUpperCase();
     if (u.picture) {
       av.style.backgroundImage = 'url(' + u.picture + ')';
       av.style.backgroundSize = 'cover';
       av.style.fontSize = '0';
     }
     showApp();
-    showToast('✓ 已连接 ' + u.email);
 
   } catch(e) {
-    console.error('Token check failed:', e.message);
+    console.error('Token invalid:', e.message);
     localStorage.removeItem('gat');
-    localStorage.removeItem('gat_time');
-    document.getElementById('loadingMsg').textContent = '登录失效，重新登录...';
-    setTimeout(() => { window.location.href = 'auth.html'; }, 1200);
+    // Fix 1: No delay, instant redirect
+    window.location.href = 'auth.html';
   }
 }
 
@@ -407,6 +393,23 @@ function showApp() {
   document.getElementById('mainContent').style.display = 'block';
   initSpeech();
   buildWeek();
+
+  // Fix 2: Token expiry warning (Google tokens last ~1 hour)
+  const savedTime = parseInt(localStorage.getItem('gat_time') || Date.now());
+  const expiresIn = 3600000 - (Date.now() - savedTime); // ms until expiry
+  const warnAt = expiresIn - 5 * 60 * 1000; // warn 5 min before
+  if (warnAt > 0) {
+    setTimeout(() => {
+      showToast('⚠️ 登录即将过期，请保存工作');
+    }, warnAt);
+  }
+  if (expiresIn > 0) {
+    setTimeout(() => {
+      localStorage.removeItem('gat');
+      showToast('登录已过期，请重新登录');
+      setTimeout(() => { window.location.href = 'auth.html'; }, 2000);
+    }, expiresIn);
+  }
   loadCal();
   // User info already set in checkTokenAndInit
 }
