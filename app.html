@@ -4,1366 +4,235 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 日历助理</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+
 <style>
-:root {
-  --bg:#07090f;--cyan:#00e5ff;--cyan2:#00ffcc;
-  --surface:#0e1220;--surface2:#141928;
-  --border:rgba(0,229,255,0.1);--border2:rgba(0,229,255,0.22);
-  --text:#d0ddf0;--muted:#3d5070;--muted2:#607090;--white:#edf4ff;
-  --warn:#ff5e5e;--gold:#ffc844;
+body {
+  background:#0b0f1a;
+  color:#fff;
+  font-family: Arial;
+  padding:20px;
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
-
-.app{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;z-index:1;}
-
-/* Header */
-.header{padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,9,15,0.88);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-box{width:32px;height:32px;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;clip-path:polygon(0 0,calc(100% - 7px) 0,100% 7px,100% 100%,7px 100%,0 calc(100% - 7px));background:rgba(0,229,255,0.06);}
-.logo-box span{font-family:'DM Mono',monospace;font-size:10px;color:var(--cyan);}
-.logo-text{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--white);}
-.logo-text em{color:var(--cyan);font-style:normal;}
-.user-info{display:flex;align-items:center;gap:8px;}
-.user-avatar{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border2);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--cyan);cursor:pointer;}
-.user-email{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.live-dot{width:7px;height:7px;background:var(--cyan2);border-radius:50%;box-shadow:0 0 8px var(--cyan2);animation:blink 2s infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
-
-/* Loading screen */
-.loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:16px;}
-.loading-screen .spin{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.loading-screen p{font-size:13px;color:var(--muted2);}
-
-/* Scroll */
-.scroll{flex:1;overflow-y:auto;padding-bottom:100px;}
-.scroll::-webkit-scrollbar{width:0;}
-
-/* Voice section */
-.voice-section{padding:14px;}
-.voice-main{background:linear-gradient(135deg,rgba(0,229,255,0.06),rgba(61,106,255,0.06));border:1px solid var(--border2);border-radius:20px;padding:18px;margin-bottom:12px;}
-.vm-top{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
-.mic-ring{width:50px;height:50px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s;flex-shrink:0;}
-.mic-ring.listening{border-color:var(--cyan);box-shadow:0 0 0 0 rgba(0,229,255,0.4);animation:sonar 1.2s ease-out infinite;background:rgba(0,229,255,0.1);}
-@keyframes sonar{0%{box-shadow:0 0 0 0 rgba(0,229,255,0.4);}100%{box-shadow:0 0 0 20px rgba(0,229,255,0);}}
-.vm-info h2{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:2px;}
-.vm-info p{font-size:11px;color:var(--muted2);}
-
-/* Waveform */
-.waveform{display:flex;gap:3px;align-items:center;justify-content:center;height:32px;margin-bottom:12px;}
-.wave-bar{width:3px;background:var(--cyan);border-radius:2px;opacity:.2;}
-.waveform.active .wave-bar{opacity:1;animation:waveAnim 0.8s ease-in-out infinite alternate;}
-.wave-bar:nth-child(1){height:6px;} .wave-bar:nth-child(2){height:14px;} .wave-bar:nth-child(3){height:22px;} .wave-bar:nth-child(4){height:30px;} .wave-bar:nth-child(5){height:18px;} .wave-bar:nth-child(6){height:26px;} .wave-bar:nth-child(7){height:12px;} .wave-bar:nth-child(8){height:20px;} .wave-bar:nth-child(9){height:8px;} .wave-bar:nth-child(10){height:16px;} .wave-bar:nth-child(11){height:24px;} .wave-bar:nth-child(12){height:10px;}
-.waveform.active .wave-bar:nth-child(1){animation-delay:0s;} .waveform.active .wave-bar:nth-child(2){animation-delay:.07s;} .waveform.active .wave-bar:nth-child(3){animation-delay:.14s;} .waveform.active .wave-bar:nth-child(4){animation-delay:.21s;} .waveform.active .wave-bar:nth-child(5){animation-delay:.28s;} .waveform.active .wave-bar:nth-child(6){animation-delay:.35s;} .waveform.active .wave-bar:nth-child(7){animation-delay:.42s;} .waveform.active .wave-bar:nth-child(8){animation-delay:.49s;} .waveform.active .wave-bar:nth-child(9){animation-delay:.56s;} .waveform.active .wave-bar:nth-child(10){animation-delay:.63s;} .waveform.active .wave-bar:nth-child(11){animation-delay:.70s;} .waveform.active .wave-bar:nth-child(12){animation-delay:.77s;}
-@keyframes waveAnim{from{transform:scaleY(.3);}to{transform:scaleY(1.2);}}
-
-/* Transcript */
-.transcript-box{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-height:48px;font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px;}
-.transcript-placeholder{color:var(--muted);font-style:italic;font-size:12px;}
-.transcript-cursor{display:inline-block;width:2px;height:14px;background:var(--cyan);margin-left:2px;vertical-align:middle;animation:blink .8s infinite;}
-
-/* AI result */
-.ai-result{background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.15);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:none;}
-.ai-result.show{display:block;animation:slideDown .3s ease;}
-@keyframes slideDown{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
-.ai-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.ai-label::before{content:'▸';font-size:8px;}
-.ai-event-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
-.aec-bar{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;}
-.aec-info{flex:1;}
-.aec-title{font-size:12px;font-weight:600;color:var(--white);margin-bottom:2px;}
-.aec-meta{font-size:10px;color:var(--muted2);}
-.aec-btn{padding:5px 12px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:8px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:all .2s;}
-.aec-btn:hover{background:rgba(0,229,255,.2);}
-.aec-btn.added{background:rgba(0,255,204,.1);border-color:rgba(0,255,204,.2);color:var(--cyan2);}
-
-/* Loading bar */
-.loading-bar{display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,229,255,.04);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:11px;color:var(--muted2);}
-.loading-bar.show{display:flex;}
-.spin-sm{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
-
-/* Buttons */
-.voice-actions{display:flex;gap:8px;}
-.btn-v{flex:1;padding:11px;border-radius:12px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;letter-spacing:.3px;text-transform:uppercase;}
-.btn-rec{background:var(--cyan);color:var(--bg);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
-.btn-rec:hover{box-shadow:0 0 20px rgba(0,229,255,.4);}
-.btn-rec.recording{background:var(--warn);animation:recPulse 1s infinite;}
-@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,94,94,.4);}50%{box-shadow:0 0 0 8px rgba(255,94,94,0);}}
-.btn-ai{flex:.8;background:rgba(61,106,255,.15);border:1px solid rgba(61,106,255,.3);color:#7a9aff;}
-.btn-ai:disabled{opacity:.4;cursor:not-allowed;}
-
-/* Quick cmds */
-.quick-cmds{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
-.qcmd{font-size:10px;padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:20px;color:var(--muted2);cursor:pointer;transition:all .2s;font-family:'DM Mono',monospace;}
-.qcmd:hover{border-color:var(--cyan);color:var(--cyan);}
-
-/* Gmail scan section */
-.scan-section{padding:0 14px;margin-bottom:14px;}
-.scan-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:8px;}
-.scan-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.scan-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);}
-.scan-btn{padding:6px 14px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
-.scan-btn:hover{background:rgba(0,229,255,.15);}
-
-/* Email items */
-.email-item{padding:10px 0;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;}
-.email-item:last-child{border-bottom:none;}
-.ei-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.ei-info{flex:1;}
-.ei-from{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;}
-.ei-subject{font-size:11px;color:var(--muted2);margin-bottom:4px;}
-.ei-tag{display:inline-flex;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;}
-.tag-cal{background:rgba(0,229,255,.1);color:var(--cyan);}
-.tag-task{background:rgba(255,200,68,.1);color:var(--gold);}
-.ei-add{padding:4px 10px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);border-radius:7px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;margin-left:auto;flex-shrink:0;}
-.ei-add.added{background:rgba(0,255,204,.08);border-color:rgba(0,255,204,.2);color:var(--cyan2);}
-
-/* Calendar */
-.cal-section{padding:0 14px;}
-.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.sec-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);}
-.sec-title::before{content:'// ';color:var(--cyan);opacity:.5;font-family:'DM Mono',monospace;}
-
-/* Week strip */
-.week-strip{display:flex;gap:4px;margin-bottom:12px;}
-.week-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;}
-.week-day.today{background:var(--surface2);border-color:var(--border2);}
-.wd-name{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;}
-.wd-num{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--muted2);}
-.week-day.today .wd-num,.week-day.today .wd-name{color:var(--cyan);}
-.wd-dot{width:4px;height:4px;background:var(--cyan);border-radius:50;margin:0 auto;}
-
-/* Timeline */
-.tl-event{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;display:flex;gap:11px;align-items:center;cursor:pointer;transition:all .2s;margin-bottom:6px;}
-.tl-event:hover{border-color:var(--border2);transform:translateX(2px);}
-.tl-event.src-voice{border-left:3px solid var(--cyan);}
-.tl-event.src-gmail{border-left:3px solid #ea4335;}
-.tl-event.src-manual{border-left:3px solid var(--gold);}
-.tl-t{text-align:center;min-width:40px;flex-shrink:0;}
-.tl-t .h{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--cyan);line-height:1;}
-.tl-t .ap{font-size:9px;color:var(--muted2);text-transform:uppercase;}
-.tl-div{width:1px;background:var(--border);align-self:stretch;}
-.tl-info h4{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--white);margin-bottom:2px;}
-.tl-info p{font-size:10px;color:var(--muted2);}
-.tl-src{margin-left:auto;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap;}
-.src-v{background:rgba(0,229,255,.1);color:var(--cyan);}
-.src-g{background:rgba(234,67,53,.1);color:#ea4335;}
-.src-m{background:rgba(255,200,68,.1);color:var(--gold);}
-
-.empty-cal{text-align:center;padding:24px;border:1px dashed var(--border);border-radius:12px;margin-bottom:8px;}
-.empty-cal p{font-size:12px;color:var(--muted2);}
-
-/* Toast */
-.toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface2);border:1px solid rgba(0,229,255,.3);border-radius:10px;padding:8px 16px;font-size:11px;color:var(--cyan);font-weight:500;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-/* Bottom nav */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:440px;background:rgba(7,9,15,.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:10px 0 18px;z-index:100;}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:5px;border-radius:10px;margin:0 3px;transition:all .2s;}
-.nav-item.active{background:rgba(0,229,255,.06);}
-.nav-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
-.nav-lbl{font-size:9px;color:var(--muted2);font-weight:500;text-transform:uppercase;}
-.nav-item.active .nav-lbl{color:var(--cyan);}
+.container {
+  max-width:500px;
+  margin:auto;
+}
+textarea {
+  width:100%;
+  height:80px;
+  margin-bottom:10px;
+}
+button {
+  padding:10px;
+  cursor:pointer;
+}
+.card {
+  border:1px solid #333;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+}
 </style>
 </head>
+
 <body>
-<div class="toast" id="toast"></div>
 
-<div class="app">
-  <div class="header">
-    <div class="logo">
-      <div class="logo-box"><span>AI</span></div>
-      <div class="logo-text">Cal<em>Voice</em></div>
-    </div>
-    <div class="user-info">
-      <div id="userEmail" class="user-email">未登录</div>
-      <div class="user-avatar" id="userAvatar" onclick="logout()">?</div>
-      <div class="live-dot"></div>
-    </div>
-  </div>
+<div class="container">
 
-  <!-- Loading screen -->
-  <div class="loading-screen" id="loadingScreen">
-    <div class="spin"></div>
-    <p id="loadingMsg">正在连接 Google 账号...</p>
-  </div>
+<h2>AI 日历助理（对话版）</h2>
 
-  <div class="scroll" id="mainContent" style="display:none">
+<textarea id="transcriptBox" placeholder="说点什么，比如：下周三下午2点去工地"></textarea>
 
-    <!-- Voice -->
-    <div class="voice-section">
-      <div class="voice-main">
-        <div class="vm-top">
-          <div class="mic-ring" id="micRing" onclick="toggleRecording()">
-            <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-              <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" fill="#00e5ff"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M9 22h6" stroke="#00e5ff" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="vm-info">
-            <h2 id="voiceStatus">点击麦克风说出日程</h2>
-            <p>AI 自动识别时间地点，加入 Google Calendar</p>
-          </div>
-        </div>
-        <div class="waveform" id="waveform">
-          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-        </div>
-        <div class="transcript-box" id="transcriptBox" 
-          contenteditable="true"
-          oninput="onTranscriptInput()"
-          onclick="if(this.innerHTML.includes('transcript-placeholder')){this.innerHTML='';}"
-          style="cursor:text;outline:none">
-          <span class="transcript-placeholder">点击麦克风说话，或直接在这里打字...</span>
-        </div>
-        <div class="loading-bar" id="loadingBar">
-          <div class="spin-sm"></div>
-          <span id="loadingBarMsg">AI 正在分析...</span>
-        </div>
-        <div class="ai-result" id="aiResult">
-          <div class="ai-label">AI 识别到以下日程</div>
-          <div id="aiEvents"></div>
-        </div>
-        <div class="voice-actions">
-          <button class="btn-v btn-rec" id="recordBtn" onclick="toggleRecording()">🎙 开始录音</button>
-          <button class="btn-v btn-ai" id="processBtn" onclick="processTranscript()" disabled>✦ AI 分析</button>
-        </div>
-        <div class="quick-cmds">
-          <div class="qcmd" onclick="useQuick(this)">"下周一下午2点团队会议"</div>
-          <div class="qcmd" onclick="useQuick(this)">"明天上午10点见客户"</div>
-          <div class="qcmd" onclick="useQuick(this)">"周五下午5点电话跟进"</div>
-        </div>
-      </div>
-    </div>
+<button onclick="processTranscript()">发送</button>
 
-    <!-- Gmail Scan -->
-    <div class="scan-section">
-      <div class="scan-card">
-        <div class="scan-hd">
-          <div class="scan-title">📧 Gmail 日程扫描</div>
-          <button class="scan-btn" onclick="scanGmail()">扫描邮件</button>
-        </div>
-        <div id="gmailResults">
-          <div style="font-size:12px;color:var(--muted2);text-align:center;padding:16px 0">
-            点击"扫描邮件"自动提取日程信息
-          </div>
-        </div>
-      </div>
-    </div>
+<div id="loadingBar" style="display:none;margin-top:10px;">AI处理中...</div>
 
-    <!-- Calendar -->
-    <div class="cal-section">
-      <div class="sec-hd">
-        <div class="sec-title">日历</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div style="font-size:11px;color:var(--muted2)" id="calMonth"></div>
-          <div style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="loadCalendar()">🔄 刷新</div>
-        </div>
-      </div>
+<div id="aiResult" style="margin-top:20px;"></div>
 
-      <!-- Month navigation -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <button onclick="changeWeek(-1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">← 上周</button>
-        <div style="font-size:12px;color:var(--text);font-weight:600" id="weekLabel"></div>
-        <button onclick="changeWeek(1)" style="background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px">下周 →</button>
-      </div>
-
-      <!-- Week strip -->
-      <div class="week-strip" id="weekStrip"></div>
-
-      <!-- Selected day events -->
-      <div class="sec-hd" style="margin-top:4px">
-        <div class="sec-title" id="selectedDayLabel">今日日程</div>
-        <div style="font-size:11px;color:var(--muted2)" id="eventCount"></div>
-      </div>
-      <div id="calendarEvents">
-        <div class="empty-cal"><p>加载中...</p></div>
-      </div>
-
-      <!-- This week all events -->
-      <div class="sec-hd" style="margin-top:14px">
-        <div class="sec-title">本周全部</div>
-      </div>
-      <div id="weekAllEvents"></div>
-    </div>
-
-  </div>
-
-  <!-- Bottom Nav -->
-  <div class="bottom-nav">
-    <div class="nav-item active">
-      <div class="nav-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#00e5ff" stroke-width="1.8"/><line x1="3" y1="10" x2="21" y2="10" stroke="#00e5ff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </div>
-      <div class="nav-lbl" style="color:var(--cyan)">日历</div>
-    </div>
-    <div class="nav-item">
-      <div class="nav-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" stroke="currentColor" stroke-width="1.8"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </div>
-      <div class="nav-lbl">语音</div>
-    </div>
-    <div class="nav-item">
-      <div class="nav-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8"/></svg>
-      </div>
-      <div class="nav-lbl">邮件</div>
-    </div>
-    <div class="nav-item">
-      <div class="nav-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor" stroke-width="1.8"/></svg>
-      </div>
-      <div class="nav-lbl">提醒</div>
-    </div>
-    <div class="nav-item" onclick="logout()">
-      <div class="nav-icon">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="nav-lbl">退出</div>
-    </div>
-  </div>
 </div>
 
 <script>
-// ── Config ──
-const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
 
-// ── Claude API helper ──
-async function callClaude(system, message) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
-
-  try {
-    const res = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system, message }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error('API error ' + res.status + ': ' + err);
-    }
-    const data = await res.json();
-    return data.text;
-  } catch(e) {
-    clearTimeout(timeout);
-    if (e.name === 'AbortError') throw new Error('请求超时，请重试');
-    throw e;
-  }
-}
-
-
-function escapeHtml(str = '') {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function safeJsonParse(raw, fallback = null) {
-  try {
-    const clean = String(raw || '').replace(/```json|```/g, '').trim();
-    return JSON.parse(clean);
-  } catch {
-    return fallback;
-  }
-}
-
-async function googleFetch(url, options = {}) {
-  const headers = { ...(options.headers || {}), Authorization: `Bearer ${accessToken}` };
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    localStorage.removeItem('gat');
-    showToast('登录已过期，请重新登录');
-    setTimeout(() => { window.location.href = 'auth.html'; }, 1200);
-    throw new Error('登录已过期');
-  }
-  return res;
-}
-
-function isActionRequest(text = '') {
-  const t = text.trim();
-  const actionHints = ['提醒我', '帮我记', '记一下', '安排', '添加', '加入', '约', '开会', '会议', '见客户', '电话', '跟进', '拜访'];
-  const questionHints = ['什么时候', '几点', '有没有', '有空', '空闲', '哪天', '查看', '查询', '告诉我', '帮我看看'];
-  if (/[？?]$/.test(t)) return false;
-  if (actionHints.some(w => t.includes(w))) return true;
-  if (questionHints.some(w => t.includes(w))) return false;
-  return /(?:今天|明天|后天|下周|周[一二三四五六日天]|星期[一二三四五六日天]|\d+月\d+日).*(?:点|:|：)/.test(t);
-}
-
-function parseChineseDateLabel(dateText) {
-  const now = new Date();
-  const text = String(dateText || '').trim();
-  if (!text || text.includes('今天')) return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (text.includes('明天')) return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  if (text.includes('后天')) return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
-
-  let m = text.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  m = text.match(/(\d{1,2})月(\d{1,2})日/);
-  if (m) return new Date(now.getFullYear(), Number(m[1]) - 1, Number(m[2]));
-
-  const weekdayMap = { '一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':0,'天':0 };
-  const weekdayMatch = text.match(/(下周|本周|这周|周|星期)([一二三四五六日天])/);
-  if (weekdayMatch) {
-    const prefix = weekdayMatch[1];
-    const targetDay = weekdayMap[weekdayMatch[2]];
-    const currentDay = now.getDay();
-    const mondayBasedCurrent = currentDay === 0 ? 7 : currentDay;
-    const mondayBasedTarget = targetDay === 0 ? 7 : targetDay;
-    let delta = mondayBasedTarget - mondayBasedCurrent;
-    if (prefix === '下周') delta += 7;
-    if ((prefix === '周' || prefix === '星期') && delta < 0) delta += 7;
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + delta);
-  }
-
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-
-function parseTimeText(timeText = '') {
-  const text = String(timeText).trim().replace('：', ':');
-  const matched = text.match(/(\d{1,2})(?::(\d{2}))?/);
-  let hour = matched ? Number(matched[1]) : 10;
-  const minute = matched && matched[2] ? Number(matched[2]) : 0;
-  if ((text.includes('下午') || text.includes('晚上')) && hour < 12) hour += 12;
-  if (text.includes('中午') && hour < 11) hour += 12;
-  if ((text.includes('凌晨') || text.includes('早上') || text.includes('上午')) && hour === 12) hour = 0;
-  return { hour, minute };
-}
-
-function normalizeEvent(event = {}) {
-  const title = String(event.title || '未命名事件').trim();
-  const dateObj = parseChineseDateLabel(event.date || '今天');
-  const timeObj = parseTimeText(event.time || '10:00');
-  const duration = Number(event.duration) > 0 ? Number(event.duration) : 60;
-  const dateLabel = `${dateObj.getFullYear()}年${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
-  const timeLabel = `${String(timeObj.hour).padStart(2,'0')}:${String(timeObj.minute).padStart(2,'0')}`;
-  return {
-    ...event,
-    title,
-    date: dateLabel,
-    time: timeLabel,
-    duration,
-    people: String(event.people || '').trim(),
-    location: String(event.location || '').trim(),
-    priority: event.priority || 'normal'
-  };
-}
-
-// ── State ──
-let accessToken = null;
-let userInfo = null;
-let isRecording = false;
-let recognition = null;
+// ===== 原有变量 =====
 let currentTranscript = '';
-let localEvents = [];
+let accessToken = localStorage.getItem('gat');
 
-// ── Auth ──
-window.addEventListener('load', async () => {
-  const hash = window.location.hash;
-  const stored = localStorage.getItem('gat');
+// ===== 新增状态 =====
+let conversationMode = false;
+let currentDraftEvent = null;
 
-  if (hash && hash.includes('access_token')) {
-    const hashParams = new URLSearchParams(hash.substring(1));
-    accessToken = hashParams.get('access_token');
-    if (accessToken) {
-      localStorage.setItem('gat', accessToken);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-      await initApp();
-      return;
-    }
-  }
-  
-  if (stored && stored !== 'null' && stored !== 'undefined') {
-    accessToken = stored;
-    await initApp();
-    return;
-  }
-
-  // No token found - show debug info before redirecting
-  document.getElementById('loadingMsg').textContent = '跳转到登录页...';
-  setTimeout(() => { window.location.href = 'auth.html'; }, 1000);
-});
-
-async function initApp() {
-  document.getElementById('loadingMsg').textContent = '正在获取账号信息...';
-  try {
-    const res = await googleFetch('https://www.googleapis.com/oauth2/v2/userinfo');
-    
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('UserInfo error:', res.status, errText);
-      // Token might be expired - clear and redirect
-      localStorage.removeItem('gat');
-      document.getElementById('loadingMsg').textContent = '登录已过期，重新登录...';
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-      return;
-    }
-    
-    userInfo = await res.json();
-    console.log('User:', userInfo.email);
-
-    document.getElementById('userEmail').textContent = userInfo.email || '';
-    document.getElementById('userAvatar').textContent = userInfo.name ? userInfo.name[0].toUpperCase() : '?';
-    if (userInfo.picture) {
-      const av = document.getElementById('userAvatar');
-      av.style.backgroundImage = `url(${userInfo.picture})`;
-      av.style.backgroundSize = 'cover';
-      av.style.fontSize = '0';
-    }
-
-    document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'block';
-
-    buildWeekStrip();
-    initSpeech();
-    showToast(`✓ 已连接 ${userInfo.email}`);
-    
-    // Load calendar in background - don't block UI
-    loadCalendar().catch(e => console.error('Calendar load error:', e));
-    
-  } catch(e) {
-    console.error('initApp error:', e);
-    document.getElementById('loadingMsg').textContent = '连接失败: ' + e.message;
-    // Don't redirect immediately - show error
-    setTimeout(() => {
-      localStorage.removeItem('gat');
-      window.location.href = 'auth.html';
-    }, 3000);
-  }
-}
-
-function logout() {
-  localStorage.removeItem('gat');
-  window.location.href = 'auth.html';
-}
-
-// ── Google Calendar ──
-async function loadCalendar() {
-  const container = document.getElementById('calendarEvents');
-  container.innerHTML = '<div class="empty-cal"><p>加载中...</p></div>';
-
-  try {
-    const today = new Date();
-    const dow = today.getDay();
-    const off = (dow === 0 ? -6 : 1 - dow) + (currentWeekOffset * 7);
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() + off);
-    weekStart.setHours(0,0,0,0);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 7);
-
-    const res = await googleFetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(weekStart.toISOString())}&timeMax=${encodeURIComponent(weekEnd.toISOString())}&singleEvents=true&orderBy=startTime`
-    );
-    const data = await res.json();
-    allWeekEvents = data.items || [];
-
-    // Update dots on week strip
-    const today2 = new Date();
-    document.querySelectorAll('.week-day').forEach((el, i) => {
-      const d = new Date(today2);
-      d.setDate(today2.getDate() + off + i);
-      const hasDot = allWeekEvents.some(ev => {
-        const start = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date);
-        return start.toDateString() === d.toDateString();
-      });
-      const dot = document.getElementById('dot' + i);
-      if (dot) dot.style.visibility = hasDot ? 'visible' : 'hidden';
-    });
-
-    // Show selected day events
-    const selDayEvents = allWeekEvents.filter(e => {
-      const start = e.start.dateTime || e.start.date;
-      return new Date(start).toDateString() === selectedDate.toDateString();
-    });
-    renderDayEvents(selDayEvents);
-
-    // Show week overview
-    renderWeekAll(allWeekEvents);
-
-  } catch(e) {
-    console.error('Calendar load error:', e);
-    container.innerHTML = '<div class="empty-cal"><p>加载失败，请刷新重试</p></div>';
-  }
-}
-
-function renderCalendarEvents(events) {
-  const container = document.getElementById('calendarEvents');
-  container.innerHTML = '';
-
-  // Merge with local voice events
-  const allEvents = [...events.map(e => ({
-    id: e.id,
-    title: e.summary || '无标题',
-    time: e.start.dateTime ? new Date(e.start.dateTime).toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '全天',
-    desc: e.description || '',
-    source: 'gmail'
-  })), ...localEvents];
-
-  allEvents.sort((a,b) => a.time.localeCompare(b.time));
-
-  if (allEvents.length === 0) {
-    container.innerHTML = '<div class="empty-cal"><p>今天暂无日程<br>用语音添加第一个事件吧 🎙</p></div>';
-    return;
-  }
-
-  allEvents.forEach(ev => {
-    const srcClass = 'src-' + (ev.source === 'gmail' ? 'gmail' : ev.source === 'voice' ? 'voice' : 'manual');
-    const srcLabel = ev.source === 'gmail' ? 'Gmail' : ev.source === 'voice' ? '语音' : '手动';
-    const srcBadge = ev.source === 'gmail' ? 'src-g' : ev.source === 'voice' ? 'src-v' : 'src-m';
-    const timeParts = ev.time !== '全天' ? ev.time.split(':') : ['全','天'];
-    const hour = timeParts[0];
-    const min = timeParts[1] || '';
-    const ampm = ev.time === '全天' ? '' : (parseInt(hour) >= 12 ? 'PM' : 'AM');
-    const displayH = ev.time === '全天' ? '全' : (parseInt(hour) > 12 ? parseInt(hour)-12 : hour);
-
-    const el = document.createElement('div');
-    el.className = `tl-event ${srcClass}`;
-    el.innerHTML = `
-      <div class="tl-t"><div class="h">${displayH}${min ? ':'+min : ''}</div><div class="ap">${ampm}</div></div>
-      <div class="tl-div"></div>
-      <div class="tl-info"><h4>${ev.title}</h4><p>${ev.desc || ''}</p></div>
-      <div class="tl-src ${srcBadge}">${srcLabel}</div>
-    `;
-    container.appendChild(el);
+// ===== Claude =====
+async function callClaude(system, message) {
+  const res = await fetch('/api/claude', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({system,message})
   });
-}
-
-async function addToGoogleCalendar(event) {
-  const now = new Date();
-  const [h, m] = event.time.split(':').map(Number);
-  
-  // Parse date - could be "2026年4月1日" or "今天" or "明天" etc
-  let targetDate = new Date(now);
-  if (event.date) {
-    const d = event.date;
-    if (d.includes('明天')) {
-      targetDate.setDate(now.getDate() + 1);
-    } else if (d.includes('后天')) {
-      targetDate.setDate(now.getDate() + 2);
-    } else if (d.match(/\d{4}年\d+月\d+日/)) {
-      // Parse Chinese date format like "2026年4月1日"
-      const match = d.match(/(\d{4})年(\d+)月(\d+)日/);
-      if (match) {
-        targetDate = new Date(parseInt(match[1]), parseInt(match[2])-1, parseInt(match[3]));
-      }
-    } else if (d.match(/\d+月\d+日/)) {
-      const match = d.match(/(\d+)月(\d+)日/);
-      if (match) {
-        targetDate = new Date(now.getFullYear(), parseInt(match[1])-1, parseInt(match[2]));
-      }
-    }
-  }
-  
-  const start = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), h, m);
-  const end = new Date(start.getTime() + (event.duration || 60) * 60000);
-
-  const body = {
-    summary: event.title,
-    description: `${event.people ? '参与人: ' + event.people : ''} ${event.location ? '| 地点: ' + event.location : ''}`.trim(),
-    start: { dateTime: start.toISOString(), timeZone: 'Australia/Sydney' },
-    end: { dateTime: end.toISOString(), timeZone: 'Australia/Sydney' }
-  };
-
-  const res = await googleFetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) throw new Error('Failed to create event');
-  return await res.json();
-}
-
-// ── Gmail Scan ──
-async function scanGmail() {
-  const container = document.getElementById('gmailResults');
-  container.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:12px 0;font-size:12px;color:var(--muted2)"><div class="spin-sm"></div>扫描邮件中...</div>';
-
-  try {
-    // Get recent emails
-    const listRes = await googleFetch(
-      'https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=meeting OR calendar OR schedule OR appointment'
-    );
-    const listData = await listRes.json();
-    const messages = listData.messages || [];
-
-    if (messages.length === 0) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--muted2);text-align:center;padding:16px 0">未找到相关日程邮件</div>';
-      return;
-    }
-
-    // Get first 5 email details
-    const emailDetails = await Promise.all(
-      messages.slice(0, 5).map(async msg => {
-        const r = await googleFetch(`https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`);
-        return await r.json();
-      })
-    );
-
-    // Use Claude to analyze emails
-    const emailSummary = emailDetails.map(e => {
-      const headers = e.payload?.headers || [];
-      const from = headers.find(h => h.name === 'From')?.value || '';
-      const subject = headers.find(h => h.name === 'Subject')?.value || '';
-      return `发件人: ${from}\n主题: ${subject}`;
-    }).join('\n---\n');
-
-    let analyzed = [];
-    try {
-      const rawText = await callClaude(
-        '分析邮件主题，找出包含会议/日程的邮件。返回JSON数组，每项包含：from(发件人简称), subject(主题), hasEvent(boolean), eventHint(如果有日程，简述内容，否则null)。只返回JSON。',
-        emailSummary
-      );
-      const clean = rawText.replace(/\`\`\`json|\`\`\`/g,'').trim();
-      analyzed = JSON.parse(clean);
-    } catch(e) { analyzed = []; }
-
-    renderGmailResults(analyzed.filter(e => e.hasEvent));
-
-  } catch(e) {
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted2);text-align:center;padding:16px 0">扫描失败，请重试</div>';
-  }
-}
-
-function renderGmailResults(items) {
-  const container = document.getElementById('gmailResults');
-  if (items.length === 0) {
-    container.innerHTML = '<div style="font-size:12px;color:var(--muted2);text-align:center;padding:16px 0">近期邮件中未发现日程安排</div>';
-    return;
-  }
-  container.innerHTML = '';
-  items.forEach((item, i) => {
-    const el = document.createElement('div');
-    el.className = 'email-item';
-    el.innerHTML = `
-      <div class="ei-dot" style="background:#ea4335"></div>
-      <div class="ei-info">
-        <div class="ei-from">${escapeHtml(item.from || '未知发件人')}</div>
-        <div class="ei-subject">${escapeHtml(item.subject || '')}</div>
-        ${item.eventHint ? `<span class="ei-tag tag-cal">${escapeHtml(item.eventHint)}</span>` : ''}
-      </div>
-      <button class="ei-add" id="eadd${i}" onclick="addEmailEvent(this, '${(item.subject||'').replace(/'/g,'`')}', '${(item.from||'').replace(/'/g,'`')}')">+ 加入日历</button>
-    `;
-    container.appendChild(el);
-  });
-}
-
-async function addEmailEvent(btn, subject, from) {
-  btn.textContent = '处理中...';
-  btn.disabled = true;
-  try {
-    const raw = await callClaude(
-      '从邮件主题提取明确的日程信息。返回JSON：{title,date,time,duration,people,location,priority}。如果缺少具体时间，time默认10:00；duration默认60；date必须给出具体中文日期（例如2026年4月2日）。只返回JSON。',
-      `主题: ${subject}
-发件人: ${from}`
-    );
-    const parsed = safeJsonParse(raw, {});
-    const ev = normalizeEvent({ ...parsed, title: parsed.title || subject, people: parsed.people || from });
-    await addToGoogleCalendar(ev);
-    btn.textContent = '✓ 已加入';
-    btn.classList.add('added');
-    showToast(`✓ "${ev.title}" 已加入日历`);
-    await loadCalendar();
-  } catch(e) {
-    console.error('addEmailEvent error:', e);
-    btn.textContent = '+ 加入日历';
-    btn.disabled = false;
-    showToast('添加失败，请重试');
-  }
-}
-
-
-// ── Voice Recognition ──
-function initSpeech() {
-  // Check support
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    document.getElementById('recordBtn').textContent = '⌨️ 请手动输入';
-    document.getElementById('voiceStatus').textContent = '此浏览器不支持语音';
-    return;
-  }
-  console.log('Speech API supported');
-}
-
-async function toggleRecording() {
-  if (isRecording) {
-    if (recognition) recognition.stop();
-    return;
-  }
-
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    showToast('请使用下方快捷指令');
-    return;
-  }
-
-  // Create new instance every time (required for iOS Safari)
-  recognition = new SR();
-  recognition.lang = 'zh-CN';
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    isRecording = true;
-    document.getElementById('micRing').classList.add('listening');
-    document.getElementById('waveform').classList.add('active');
-    document.getElementById('voiceStatus').textContent = '🔴 正在聆听...';
-    document.getElementById('recordBtn').textContent = '⏹ 停止录音';
-    document.getElementById('recordBtn').classList.add('recording');
-    document.getElementById('transcriptBox').innerHTML = '<span class="transcript-cursor"></span>';
-    document.getElementById('aiResult').classList.remove('show');
-    document.getElementById('processBtn').disabled = true;
-  };
-
-  recognition.onresult = (e) => {
-    let final = '';
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) final += e.results[i][0].transcript;
-      else interim += e.results[i][0].transcript;
-    }
-    currentTranscript = final || interim;
-    document.getElementById('transcriptBox').innerHTML =
-      currentTranscript + '<span class="transcript-cursor"></span>';
-  };
-
-  recognition.onend = () => {
-    stopRecording();
-    if (currentTranscript && currentTranscript.trim()) {
-      document.getElementById('processBtn').disabled = false;
-      showToast('录音完成，点击 AI 分析');
-    }
-  };
-
-  recognition.onerror = (e) => {
-    console.error('Speech error:', e.error);
-    stopRecording();
-    if (e.error === 'not-allowed') {
-      showToast('请在手机设置里允许麦克风权限');
-    } else if (e.error === 'no-speech') {
-      showToast('没有听到声音，请重试');
-    } else {
-      showToast('语音识别失败: ' + e.error);
-    }
-  };
-
-  recognition.onspeechend = () => {
-    recognition.stop();
-  };
-
-  // Safari requires explicit mic permission before starting
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // Got permission - stop the stream and start recognition
-    stream.getTracks().forEach(t => t.stop());
-    recognition.start();
-  } catch(permErr) {
-    console.error('Mic permission error:', permErr);
-    if (permErr.name === 'NotAllowedError' || permErr.name === 'SecurityError') {
-      document.getElementById('transcriptBox').innerHTML = `
-        <div style="background:rgba(255,94,94,0.08);border:1px solid rgba(255,94,94,0.2);border-radius:10px;padding:14px;text-align:left">
-          <div style="color:var(--warn);font-weight:700;font-size:13px;margin-bottom:8px">🎙 麦克风未授权</div>
-          <div style="color:#8090a0;font-size:12px;line-height:1.8">
-            <b style="color:var(--text)">iPhone Safari：</b><br>
-            设置 → Safari → 麦克风 → 允许<br><br>
-            <b style="color:var(--text)">iPhone Chrome：</b><br>
-            设置 → Chrome → 麦克风 → 开启<br><br>
-            <b style="color:var(--text)">设置完后</b>重新打开网页再试
-          </div>
-        </div>
-      `;
-    } else {
-      showToast('麦克风启动失败: ' + permErr.message);
-    }
-    isRecording = false;
-    document.getElementById('micRing').classList.remove('listening');
-    document.getElementById('waveform').classList.remove('active');
-    document.getElementById('recordBtn').textContent = '🎙 开始录音';
-    document.getElementById('recordBtn').classList.remove('recording');
-  }
-}
-
-function stopRecording() {
-  isRecording = false;
-
-  // Force stop and release microphone completely
-  if (recognition) {
-    try { recognition.abort(); } catch(e) {}
-    recognition = null; // destroy instance to release mic
-  }
-
-  // Also stop any media tracks if still active
-  if (navigator.mediaDevices) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => { stream.getTracks().forEach(t => t.stop()); })
-      .catch(() => {});
-  }
-
-  document.getElementById('micRing').classList.remove('listening');
-  document.getElementById('waveform').classList.remove('active');
-  document.getElementById('voiceStatus').textContent = '点击麦克风说出日程';
-  document.getElementById('recordBtn').textContent = '🎙 开始录音';
-  document.getElementById('recordBtn').classList.remove('recording');
-  if (currentTranscript) {
-    document.getElementById('transcriptBox').innerHTML = currentTranscript;
-  }
-}
-
-function useQuick(el) {
-  currentTranscript = el.textContent.replace(/"/g,'');
-  document.getElementById('transcriptBox').innerHTML = currentTranscript;
-  document.getElementById('processBtn').disabled = false;
-  showToast('已填入，点击 AI 分析');
-}
-
-async function processTranscript() {
-  if (!currentTranscript) return;
-  document.getElementById('aiResult').classList.remove('show');
-  document.getElementById('processBtn').disabled = true;
-
-  // Detect if it's a question or an event to add
-  if (!isActionRequest(currentTranscript) && isQuestion(currentTranscript)) {
-    await answerQuestion(currentTranscript);
-    return;
-  }
-
-  document.getElementById('loadingBar').classList.add('show');
-  document.getElementById('loadingBarMsg').textContent = 'AI 正在分析日程...';
-
-  try {
-    const rawText = await callClaude(
-      (() => {
-        const now = new Date();
-        const dow = now.getDay(); // 0=Sun, 1=Mon... 6=Sat
-        // Calculate next Monday
-        const daysToNextMon = dow === 0 ? 1 : 8 - dow;
-        const nextMon = new Date(now);
-        nextMon.setDate(now.getDate() + daysToNextMon);
-        const nextTue = new Date(nextMon); nextTue.setDate(nextMon.getDate()+1);
-        const nextWed = new Date(nextMon); nextWed.setDate(nextMon.getDate()+2);
-        const nextThu = new Date(nextMon); nextThu.setDate(nextMon.getDate()+3);
-        const nextFri = new Date(nextMon); nextFri.setDate(nextMon.getDate()+4);
-        const fmt = d => d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
-        return `你是日历助理。今天是${fmt(now)}（${['周日','周一','周二','周三','周四','周五','周六'][dow]}）。
-下周对应日期：下周一=${fmt(nextMon)}, 下周二=${fmt(nextTue)}, 下周三=${fmt(nextWed)}, 下周四=${fmt(nextThu)}, 下周五=${fmt(nextFri)}。
-从用户的话里提取日程，使用上面的日期对应关系计算具体日期，返回JSON数组，每项：{title(事件名),date(具体日期如"2026年4月2日"),time(24小时制如"11:00"),duration(分钟默认60),people(参与人),location(地点),priority(high/normal/low)}。只返回JSON数组不要其他文字。`;
-      })(),
-      `今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用户说：${currentTranscript}`
-    );
-    const clean = rawText.replace(/\`\`\`json|\`\`\`/g,'').trim();
-    const events = (safeJsonParse(clean, []) || []).map(normalizeEvent);
-    if (!events.length) throw new Error('AI 没识别到有效日程');
-    showAIResults(events);
-  } catch(e) {
-    console.error('processTranscript error:', e);
-    document.getElementById('loadingBar').classList.remove('show');
-    document.getElementById('processBtn').disabled = false;
-    showToast('分析失败：' + e.message);
-  }
-}
-
-function showAIResults(events) {
-  const container = document.getElementById('aiEvents');
-  container.innerHTML = '';
-  window._pendingEvents = events;
-  const colors = { high:'#ff5e5e', normal:'#00e5ff', low:'#607090' };
-
-  events.forEach((ev, i) => {
-    const el = document.createElement('div');
-    el.className = 'ai-event-card';
-    el.innerHTML = `
-      <div class="aec-bar" style="background:${colors[ev.priority]||'#00e5ff'}"></div>
-      <div class="aec-info">
-        <div class="aec-title">${escapeHtml(ev.title)}</div>
-        <div class="aec-meta">${escapeHtml(ev.date)} ${escapeHtml(ev.time)} · ${ev.duration}分钟${ev.people?' · '+escapeHtml(ev.people):''}${ev.location?' · '+escapeHtml(ev.location):''}</div>
-      </div>
-      <button class="aec-btn" onclick="addVoiceEvent(this,${i})">+ 加入</button>
-    `;
-    container.appendChild(el);
-  });
-  document.getElementById('aiResult').classList.add('show');
-}
-
-async function checkConflict(event) {
-  // Parse target date/time
-  const now = new Date();
-  const [h, m] = event.time.split(':').map(Number);
-  let targetDate = new Date(now);
-  
-  if (event.date) {
-    const d = event.date;
-    if (d.includes('明天')) targetDate.setDate(now.getDate() + 1);
-    else if (d.includes('后天')) targetDate.setDate(now.getDate() + 2);
-    else if (d.match(/\d{4}年\d+月\d+日/)) {
-      const match = d.match(/(\d{4})年(\d+)月(\d+)日/);
-      if (match) targetDate = new Date(parseInt(match[1]), parseInt(match[2])-1, parseInt(match[3]));
-    } else if (d.match(/\d+月\d+日/)) {
-      const match = d.match(/(\d+)月(\d+)日/);
-      if (match) targetDate = new Date(now.getFullYear(), parseInt(match[1])-1, parseInt(match[2]));
-    }
-  }
-
-  const start = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), h, m);
-  const end = new Date(start.getTime() + (event.duration || 60) * 60000);
-
-  // Query Google Calendar for that time window
-  const res = await googleFetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(start.toISOString())}&timeMax=${encodeURIComponent(end.toISOString())}&singleEvents=true`
-  );
   const data = await res.json();
-  return data.items || [];
+  return data.text;
 }
 
-async function addVoiceEvent(btn, idx) {
-  const ev = normalizeEvent(window._pendingEvents[idx] || {});
-  btn.textContent = '检查中...';
-  btn.disabled = true;
+// ===== 工具 =====
+function clean(t){
+  return t.replace(/```json|```/g,'').trim();
+}
+
+function isModification(text){
+  return ['改','换','调整','推迟','提前'].some(w=>text.includes(w));
+}
+
+// ===== 主逻辑 =====
+async function processTranscript(){
+
+  currentTranscript = transcriptBox.value.trim();
+  if(!currentTranscript) return;
+
+  loadingBar.style.display = 'block';
 
   try {
-    // Check for conflicts first
-    const conflicts = await checkConflict(ev);
-    
-    if (conflicts.length > 0) {
-      const conflictNames = conflicts.map(c => c.summary || '未命名事件').join('、');
-      const confirm = window.confirm(
-        `⚠️ 时间冲突！
 
-"${ev.title}" 与以下日程时间重叠：
-${conflictNames}
+    // ===== 修改 =====
+    if (isModification(currentTranscript) && currentDraftEvent) {
 
-是否仍要添加？`
+      const raw = await callClaude(
+`当前事件：
+${JSON.stringify(currentDraftEvent)}
+
+用户修改：
+${currentTranscript}
+
+返回JSON：
+{"event":{}}`
       );
-      if (!confirm) {
-        btn.textContent = '+ 加入';
-        btn.disabled = false;
-        showToast('已取消，请选择其他时间');
+
+      const obj = JSON.parse(clean(raw));
+      currentDraftEvent = obj.event;
+
+      loadingBar.style.display = 'none';
+
+      speak("已修改");
+      showEvent(currentDraftEvent);
+      return;
+    }
+
+    // ===== 对话补充 =====
+    if (conversationMode) {
+
+      const raw = await callClaude(
+`当前事件：
+${JSON.stringify(currentDraftEvent)}
+
+用户补充：
+${currentTranscript}
+
+返回JSON：
+{"complete":true,"event":{},"reply":""}`
+      );
+
+      const obj = JSON.parse(clean(raw));
+      currentDraftEvent = obj.event;
+
+      if (!obj.complete) {
+        loadingBar.style.display = 'none';
+        speak(obj.reply);
         return;
       }
+
+      conversationMode = false;
+
+      loadingBar.style.display = 'none';
+      showEvent(obj.event);
+      return;
     }
 
-    await addToGoogleCalendar(ev);
-    btn.textContent = '✓ 已加入';
-    btn.classList.add('added');
-    showToast(`✓ "${ev.title}" 已加入 Google Calendar`);
-    await loadCalendar();
-
-  } catch(e) {
-    console.error('addVoiceEvent error:', e);
-    btn.textContent = '+ 加入';
-    btn.disabled = false;
-    showToast('添加失败，请重试');
-  }
-}
-
-// ── Calendar State ──
-let currentWeekOffset = 0;
-let selectedDate = new Date();
-let allWeekEvents = [];
-
-function changeWeek(dir) {
-  currentWeekOffset += dir;
-  const base = new Date();
-  const dow = base.getDay();
-  const off = (dow === 0 ? -6 : 1 - dow) + (currentWeekOffset * 7);
-  selectedDate = new Date(base.getFullYear(), base.getMonth(), base.getDate() + off);
-  buildWeekStrip();
-  loadCalendar();
-}
-
-// ── Week Strip ──
-function buildWeekStrip() {
-  const strip = document.getElementById('weekStrip');
-  strip.innerHTML = '';
-  const days = ['一','二','三','四','五','六','日'];
-  const today = new Date();
-  const dow = today.getDay();
-  const off = (dow === 0 ? -6 : 1 - dow) + (currentWeekOffset * 7);
-
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + off);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const wl = document.getElementById('weekLabel');
-  if (wl) wl.textContent = `${monday.getMonth()+1}月${monday.getDate()}日 — ${sunday.getMonth()+1}月${sunday.getDate()}日`;
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + off + i);
-    const isToday = d.toDateString() === today.toDateString();
-    const isSelected = d.toDateString() === selectedDate.toDateString();
-
-    const el = document.createElement('div');
-    el.className = 'week-day' + (isToday ? ' today' : '');
-    if (isSelected) el.style.cssText = 'background:var(--surface2);border-color:rgba(0,229,255,0.3)';
-    el.innerHTML = `<div class="wd-name">周${days[i]}</div><div class="wd-num">${d.getDate()}</div><div class="wd-dot" id="dot${i}" style="visibility:hidden"></div>`;
-    el.dataset.date = d.toDateString();
-    const captured = new Date(d);
-    el.onclick = () => selectDay(captured, el);
-    strip.appendChild(el);
-  }
-}
-
-function selectDay(date, el) {
-  selectedDate = date;
-  document.querySelectorAll('.week-day').forEach(w => {
-    if (!w.classList.contains('today')) {
-      w.style.background = '';
-      w.style.borderColor = '';
-    }
-  });
-  el.style.background = 'var(--surface2)';
-  el.style.borderColor = 'rgba(0,229,255,0.3)';
-
-  const dayEvents = allWeekEvents.filter(e => {
-    const start = e.start.dateTime || e.start.date;
-    if (!start) return false;
-    return new Date(start).toDateString() === date.toDateString();
-  });
-
-  const days = ['周日','周一','周二','周三','周四','周五','周六'];
-  const lbl = document.getElementById('selectedDayLabel');
-  if (lbl) lbl.textContent = `${date.getMonth()+1}月${date.getDate()}日 ${days[date.getDay()]}`;
-  renderDayEvents(dayEvents);
-}
-
-function renderDayEvents(events) {
-  const container = document.getElementById('calendarEvents');
-  const count = document.getElementById('eventCount');
-  if (count) count.textContent = events.length ? `${events.length} 个` : '';
-
-  if (events.length === 0) {
-    container.innerHTML = '<div class="empty-cal"><p>这天没有日程 🎉<br>用语音说出来就能添加</p></div>';
-    return;
-  }
-
-  container.innerHTML = '';
-  events.sort((a,b) => {
-    const ta = a.start.dateTime || a.start.date || '';
-    const tb = b.start.dateTime || b.start.date || '';
-    return ta.localeCompare(tb);
-  });
-
-  events.forEach(ev => {
-    const startDT = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
-    const endDT = ev.end.dateTime ? new Date(ev.end.dateTime) : null;
-    const timeStr = startDT ? startDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '全天';
-    const endStr = endDT ? endDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
-    const hour = startDT ? startDT.getHours() : 0;
-    const displayH = hour > 12 ? hour - 12 : hour;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-
-    const el = document.createElement('div');
-    el.className = 'tl-event src-gmail';
-    el.innerHTML = `
-      <div class="tl-t">
-        <div class="h">${startDT ? displayH+':'+String(startDT.getMinutes()).padStart(2,'0') : '全'}</div>
-        <div class="ap">${startDT ? ampm : '天'}</div>
-      </div>
-      <div class="tl-div"></div>
-      <div class="tl-info">
-        <h4>${escapeHtml(ev.summary || '无标题')}</h4>
-        <p>${escapeHtml(endStr ? timeStr+'–'+endStr : '')} ${ev.location ? '· '+escapeHtml(ev.location) : ''}</p>
-      </div>
-      <div class="tl-src src-g">Calendar</div>
-    `;
-    container.appendChild(el);
-  });
-}
-
-function renderWeekAll(events) {
-  const container = document.getElementById('weekAllEvents');
-  if (!container) return;
-
-  if (events.length === 0) {
-    container.innerHTML = '<div class="empty-cal"><p>本周暂无日程</p></div>';
-    return;
-  }
-
-  // Group by day
-  const groups = {};
-  const dayNames = ['周日','周一','周二','周三','周四','周五','周六'];
-  events.forEach(ev => {
-    const start = ev.start.dateTime ? new Date(ev.start.dateTime) : new Date(ev.start.date);
-    const key = start.toDateString();
-    if (!groups[key]) groups[key] = { date: start, events: [] };
-    groups[key].events.push(ev);
-  });
-
-  container.innerHTML = '';
-  Object.values(groups).sort((a,b) => a.date - b.date).forEach(group => {
-    const dayEl = document.createElement('div');
-    dayEl.style.cssText = 'margin-bottom:10px';
-    dayEl.innerHTML = `<div style="font-size:10px;color:var(--cyan);font-family:DM Mono,monospace;letter-spacing:1px;margin-bottom:6px;padding:0 2px">${group.date.getMonth()+1}月${group.date.getDate()}日 ${dayNames[group.date.getDay()]}</div>`;
-
-    group.events.forEach(ev => {
-      const startDT = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
-      const timeStr = startDT ? startDT.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '全天';
-      const evEl = document.createElement('div');
-      evEl.className = 'upcoming-chip';
-      evEl.style.marginBottom = '5px';
-      evEl.innerHTML = `
-        <div class="uc-dot" style="background:#ea4335"></div>
-        <div class="uc-text">
-          <div class="uc-title">${escapeHtml(ev.summary || '无标题')}</div>
-          <div class="uc-time">${escapeHtml(timeStr)} ${ev.location ? '· '+escapeHtml(ev.location) : ''}</div>
-        </div>
-      `;
-      dayEl.appendChild(evEl);
-    });
-    container.appendChild(dayEl);
-  });
-}
-
-// ── Toast ──
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-// ── Manual text input fallback ──
-function onTranscriptInput() {
-  const box = document.getElementById('transcriptBox');
-  const text = box.innerText.trim();
-  currentTranscript = text;
-  if (text && text !== '点击麦克风说话，或直接在这里打字...') {
-    document.getElementById('processBtn').disabled = false;
-  } else {
-    document.getElementById('processBtn').disabled = true;
-  }
-}
-
-// ── Voice Reply (Text to Speech) ──
-function speak(text) {
-  window.speechSynthesis.cancel(); // Stop any current speech
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'zh-CN';
-  utter.rate = 0.95;
-  utter.pitch = 1;
-  utter.volume = 1;
-  
-  // Try to find a Chinese voice
-  const voices = window.speechSynthesis.getVoices();
-  const chineseVoice = voices.find(v => v.lang.includes('zh') || v.lang.includes('cmn'));
-  if (chineseVoice) utter.voice = chineseVoice;
-  
-  window.speechSynthesis.speak(utter);
-  
-  // Show what AI is saying
-  document.getElementById('transcriptBox').innerHTML = 
-    '<span style="color:var(--cyan);font-size:11px;font-family:DM Mono,monospace">AI ▸</span> ' + text;
-}
-
-// ── Detect if user is asking a question vs adding event ──
-function isQuestion(text) {
-  const t = String(text || '').trim();
-  const questionWords = ['什么时候','几点','有没有','有时间','有空','空闲','几号','哪天','今天有','明天有','这周有什么','本周有什么','下周有什么','查看','查询','帮我看看','告诉我'];
-  const actionWords = ['提醒我','帮我记','记一下','安排','添加','加入','约','开会','会议','见客户','电话跟进'];
-  if (actionWords.some(w => t.includes(w))) return false;
-  return /[？?]$/.test(t) || questionWords.some(w => t.includes(w));
-}
-
-
-// ── Answer calendar questions ──
-async function answerQuestion(question) {
-  document.getElementById('loadingBar').classList.add('show');
-  document.getElementById('loadingBarMsg').textContent = 'AI 正在查看你的日历...';
-
-  try {
-    // Get next 7 days of calendar events
-    const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    
-    const res = await googleFetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(now.toISOString())}&timeMax=${encodeURIComponent(nextWeek.toISOString())}&singleEvents=true&orderBy=startTime`
-    );
-    const data = await res.json();
-    const events = data.items || [];
-
-    // Format events for Claude
-    const eventList = events.map(e => {
-      const start = e.start.dateTime ? new Date(e.start.dateTime) : null;
-      const end = e.end.dateTime ? new Date(e.end.dateTime) : null;
-      if (!start) return null;
-      return `${start.toLocaleDateString('zh-CN', {month:'long',day:'numeric',weekday:'short'})} ${start.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})} - ${end.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})}: ${e.summary || '未命名'}`;
-    }).filter(Boolean).join('\n');
-
-    // Use JSON response to handle both answers and event creation
+    // ===== 初次解析 =====
     const raw = await callClaude(
-      `你是用户的AI日历助理。今天是${now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。
-用户的日历事件：${eventList || '本周暂无日程'}
+`你是日历助手。
 
-请用JSON格式回复，包含：
+返回JSON：
 {
-  "reply": "你的口语回复（不超过60字）",
-  "hasEvent": true或false（用户是否要添加新日程）,
-  "event": 如果hasEvent为true，提供{title,date,time,duration,people,location,priority}，否则null
-}
-只返回JSON，不要其他文字。`,
-      question
-    );
+ "complete": true/false,
+ "event": {
+   "title":"",
+   "date":"",
+   "time":"",
+   "duration":60,
+   "people":"",
+   "location":""
+ },
+ "reply":"如果缺信息就问"
+}`,
+    currentTranscript);
 
-    let reply = '';
-    let eventToAdd = null;
-    
-    try {
-      const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
-      const parsed = JSON.parse(clean);
-reply = parsed.reply || raw;
-      if (parsed.hasEvent && parsed.event) {
-        eventToAdd = normalizeEvent(parsed.event);
-      }
-    } catch(e) {
-      reply = raw; // fallback to raw text
+    const obj = JSON.parse(clean(raw));
+    currentDraftEvent = obj.event;
+
+    if (!obj.complete) {
+      conversationMode = true;
+      loadingBar.style.display = 'none';
+      speak(obj.reply);
+      return;
     }
 
-    document.getElementById('loadingBar').classList.remove('show');
-    
-    // Speak the answer
-    speak(reply);
-    
-    // Show reply
-    let resultHTML = '<div class="ai-label">AI 回复</div>' +
-      '<div style="font-size:13px;color:var(--text);line-height:1.7;padding:8px 0">' + reply + '</div>';
-    
-    // If there's an event to add, show the add button AND auto-add after 2 seconds
-    if (eventToAdd) {
-      window._pendingEvents = [eventToAdd];
-      const btnId = 'autoAddBtn';
-      resultHTML += `
-        <div class="ai-event-card" style="margin-top:10px">
-          <div class="aec-bar" style="background:var(--cyan)"></div>
-          <div class="aec-info">
-            <div class="aec-title">${escapeHtml(eventToAdd.title)}</div>
-            <div class="aec-meta">${escapeHtml(eventToAdd.date)} ${escapeHtml(eventToAdd.time)} · ${eventToAdd.duration||60}分钟${eventToAdd.people?' · '+escapeHtml(eventToAdd.people):''}</div>
-          </div>
-          <button class="aec-btn" id="${btnId}" onclick="addVoiceEvent(this,0)">+ 加入日历</button>
-        </div>`;
-    }
-    
-    document.getElementById('aiResult').innerHTML = resultHTML;
-    document.getElementById('aiResult').classList.add('show');
+    loadingBar.style.display = 'none';
+    showEvent(obj.event);
 
-
-  } catch(e) {
-    console.error('answerQuestion error:', e);
-    document.getElementById('loadingBar').classList.remove('show');
-    const errMsg = e.message.includes('超时') ? '查询超时，请重试' : '查询失败，请重试';
-    showToast(errMsg);
-    speak(errMsg);
+  } catch(e){
+    loadingBar.style.display = 'none';
+    alert("AI错误：" + e.message);
   }
 }
+
+// ===== UI展示 =====
+function showEvent(ev){
+
+  aiResult.innerHTML = `
+  <div class="card">
+    <b>${ev.title}</b><br>
+    ${ev.date} ${ev.time}<br>
+    ${ev.people||''} ${ev.location||''}
+    <br><br>
+    <button onclick="confirmAdd()">加入日历</button>
+  </div>`;
+}
+
+// ===== 写入日历 =====
+async function confirmAdd(){
+
+  const ev = currentDraftEvent;
+
+  const [h,m] = ev.time.split(':');
+
+  const d = new Date(ev.date.replace(/年|月/g,'-').replace('日',''));
+
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+
+  await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${accessToken}`,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      summary: ev.title,
+      start:{dateTime:start.toISOString(), timeZone:'Australia/Sydney'},
+      end:{dateTime:new Date(start.getTime()+3600000).toISOString(), timeZone:'Australia/Sydney'}
+    })
+  });
+
+  speak("已加入日历");
+
+  conversationMode = false;
+  currentDraftEvent = null;
+}
+
+// ===== 语音反馈 =====
+function speak(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN';
+  speechSynthesis.speak(u);
+}
+
 </script>
+
 </body>
 </html>
