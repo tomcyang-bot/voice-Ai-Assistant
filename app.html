@@ -1049,8 +1049,7 @@ async function sendEmail() {
 
   // Create Gmail draft via API
   try {
-    const email = [`To: ${to}`, `Subject: ${subject||'(无主题)'}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('
-');
+    const email = ['To: ' + to, 'Subject: ' + (subject||'(无主题)'), 'Content-Type: text/plain; charset=utf-8', '', body].join('\n');
     const encoded = btoa(unescape(encodeURIComponent(email))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
