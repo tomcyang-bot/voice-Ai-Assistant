@@ -3,20 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <title>登录中...</title>
+<style>
+body{background:#07090f;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif;}
+.msg{color:#00e5ff;font-size:14px;text-align:center;}
+.spin{width:24px;height:24px;border:2px solid rgba(0,229,255,0.2);border-top-color:#00e5ff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
 </head>
 <body>
+<div class="msg"><div class="spin"></div>正在登录...</div>
 <script>
-// Get token from hash and save to localStorage
-const hash = window.location.hash;
-if (hash && hash.includes('access_token')) {
-  const params = new URLSearchParams(hash.substring(1));
-  const token = params.get('access_token');
-  if (token) {
-    localStorage.setItem('gat', token);
+(function() {
+  try {
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('access_token') !== -1) {
+      var params = new URLSearchParams(hash.substring(1));
+      var token = params.get('access_token');
+      if (token) {
+        localStorage.setItem('gat', token);
+        localStorage.setItem('gat_time', Date.now().toString());
+      }
+    }
+  } catch(e) {
+    console.error('Callback error:', e);
   }
-}
-// Always redirect to app
-window.location.replace('app.html');
+  setTimeout(function() {
+    window.location.replace('app.html');
+  }, 600);
+})();
 </script>
 </body>
 </html>
