@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>隐私政策 — CalVoice AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07090f;--cyan:#00e5ff;--surface:#0e1220;--border:rgba(0,229,255,0.1);--text:#d0ddf0;--muted2:#607090;--white:#edf4ff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:0 0 60px;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+
+.header{padding:20px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,9,15,0.9);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-box{width:30px;height:30px;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));background:rgba(0,229,255,0.06);}
+.logo-box span{font-size:9px;color:var(--cyan);font-weight:700;}
+.logo-text{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--white);}
+.logo-text em{color:var(--cyan);font-style:normal;}
+.back-btn{font-size:12px;color:var(--cyan);cursor:pointer;text-decoration:none;}
+
+.content{max-width:680px;margin:0 auto;padding:40px 24px;}
+
+.hero{margin-bottom:40px;}
+.hero h1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--white);margin-bottom:8px;letter-spacing:-.5px;}
+.hero p{font-size:13px;color:var(--muted2);line-height:1.7;}
+.updated{display:inline-block;font-size:11px;color:var(--cyan);background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);border-radius:20px;padding:4px 12px;margin-top:10px;}
+
+.section{margin-bottom:32px;}
+.section h2{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--white);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section h2::before{content:'';width:3px;height:16px;background:var(--cyan);border-radius:2px;flex-shrink:0;}
+.section p{font-size:13px;color:var(--muted2);line-height:1.8;margin-bottom:10px;}
+.section ul{list-style:none;padding:0;}
+.section ul li{font-size:13px;color:var(--muted2);line-height:1.8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:flex-start;gap:8px;}
+.section ul li::before{content:'→';color:var(--cyan);font-size:11px;flex-shrink:0;margin-top:3px;}
+.section ul li:last-child{border-bottom:none;}
+
+.highlight{background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 20px;margin:16px 0;}
+.highlight p{margin:0;font-size:13px;color:var(--text);line-height:1.7;}
+.highlight strong{color:var(--cyan);}
+
+.contact-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-top:32px;display:flex;align-items:center;gap:16px;}
+.contact-icon{font-size:28px;flex-shrink:0;}
+.contact-info h3{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:4px;}
+.contact-info p{font-size:12px;color:var(--muted2);}
+.contact-info a{color:var(--cyan);text-decoration:none;}
+
+.divider{height:1px;background:var(--border);margin:28px 0;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-box"><span>AI</span></div>
+    <div class="logo-text">Cal<em>Voice</em></div>
+  </div>
+  <a href="auth.html" class="back-btn">← 返回</a>
+</div>
+
+<div class="content">
+
+  <div class="hero">
+    <h1>隐私政策</h1>
+    <p>我们非常重视您的隐私。本政策说明我们如何收集、使用和保护您的个人信息。</p>
+    <div class="updated">最后更新：2026年3月28日</div>
+  </div>
+
+  <div class="highlight">
+    <p><strong>核心承诺：</strong>您的数据存储在您自己的 Google 账号中，我们无法访问您的邮件原文和日历详情。我们只在您主动操作时临时处理必要的信息。</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <h2>我们收集的信息</h2>
+    <p>使用 CalVoice AI 时，我们会访问以下信息：</p>
+    <ul>
+      <li>您的 Google 账号基本信息（姓名、邮箱地址、头像），用于显示登录状态</li>
+      <li>您的 Google Calendar 事件，用于显示和创建日程</li>
+      <li>您的 Gmail 邮件元数据（发件人、主题），用于识别会议邀请</li>
+      <li>您通过语音或文字输入的日程内容，用于 AI 分析和创建事件</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>我们如何使用您的信息</h2>
+    <ul>
+      <li>分析您的语音/文字输入，提取日程信息</li>
+      <li>在您的 Google Calendar 中创建事件</li>
+      <li>扫描邮件主题，识别含会议信息的邮件</li>
+      <li>生成邮件草稿（需要您确认后才发送）</li>
+      <li>回答您关于日程安排的问题</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>我们不会做的事</h2>
+    <ul>
+      <li>不会永久存储您的邮件内容或日历详情</li>
+      <li>不会将您的数据出售或分享给第三方</li>
+      <li>不会在未经您确认的情况下发送任何邮件</li>
+      <li>不会读取与日程无关的邮件内容</li>
+      <li>不会在您退出后保留任何个人数据</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>数据存储与安全</h2>
+    <p>您的日历和邮件数据始终存储在您自己的 Google 账号中，我们通过 Google 官方 OAuth 2.0 授权访问，您可以随时在 Google 账号设置中撤销授权。</p>
+    <p>AI 分析过程中，您的输入内容会通过加密连接发送到 Anthropic Claude API 进行处理，处理完成后不会被永久保留。</p>
+  </div>
+
+  <div class="section">
+    <h2>第三方服务</h2>
+    <p>本应用使用以下第三方服务：</p>
+    <ul>
+      <li><strong style="color:var(--white)">Google OAuth / Gmail API / Calendar API</strong> — 用于账号登录和日程管理，受 Google 隐私政策约束</li>
+      <li><strong style="color:var(--white)">Anthropic Claude API</strong> — 用于 AI 分析，受 Anthropic 隐私政策约束</li>
+      <li><strong style="color:var(--white)">Vercel</strong> — 用于应用托管，受 Vercel 隐私政策约束</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>您的权利</h2>
+    <ul>
+      <li>随时在 Google 账号设置中撤销本应用的访问权限</li>
+      <li>要求删除与您账号相关的任何数据</li>
+      <li>联系我们了解我们如何处理您的数据</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Cookie 和本地存储</h2>
+    <p>我们仅使用浏览器本地存储（localStorage）保存您的登录 Token，用于维持登录状态。退出登录后该 Token 会被立即清除。我们不使用任何追踪 Cookie。</p>
+  </div>
+
+  <div class="section">
+    <h2>政策更新</h2>
+    <p>我们可能会不定期更新本隐私政策。重大变更时会在应用内通知您。继续使用本应用即表示您接受更新后的政策。</p>
+  </div>
+
+  <div class="contact-box">
+    <div class="contact-icon">📩</div>
+    <div class="contact-info">
+      <h3>有问题？联系我们</h3>
+      <p>隐私相关问题请联系：<a href="mailto:info@futureone.au">info@futureone.au</a><br>
+      或访问：<a href="https://futureone.au" target="_blank">futureone.au</a></p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
