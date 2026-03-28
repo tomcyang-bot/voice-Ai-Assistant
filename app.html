@@ -853,7 +853,22 @@ async function processTranscript() {
 
   try {
     const rawText = await callClaude(
-      `你是日历助理。今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。从用户的话里提取日程，计算出具体日期（如"下周三"要算出实际日期），返回JSON数组，每项：{title(事件名),date(具体日期如"2026年4月1日"),time(24小时制如"11:00"),duration(分钟默认60),people(参与人),location(地点),priority(high/normal/low)}。只返回JSON数组不要其他文字。`,
+      (() => {
+        const now = new Date();
+        const dow = now.getDay(); // 0=Sun, 1=Mon... 6=Sat
+        // Calculate next Monday
+        const daysToNextMon = dow === 0 ? 1 : 8 - dow;
+        const nextMon = new Date(now);
+        nextMon.setDate(now.getDate() + daysToNextMon);
+        const nextTue = new Date(nextMon); nextTue.setDate(nextMon.getDate()+1);
+        const nextWed = new Date(nextMon); nextWed.setDate(nextMon.getDate()+2);
+        const nextThu = new Date(nextMon); nextThu.setDate(nextMon.getDate()+3);
+        const nextFri = new Date(nextMon); nextFri.setDate(nextMon.getDate()+4);
+        const fmt = d => d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
+        return `你是日历助理。今天是${fmt(now)}（${['周日','周一','周二','周三','周四','周五','周六'][dow]}）。
+下周对应日期：下周一=${fmt(nextMon)}, 下周二=${fmt(nextTue)}, 下周三=${fmt(nextWed)}, 下周四=${fmt(nextThu)}, 下周五=${fmt(nextFri)}。
+从用户的话里提取日程，使用上面的日期对应关系计算具体日期，返回JSON数组，每项：{title(事件名),date(具体日期如"2026年4月2日"),time(24小时制如"11:00"),duration(分钟默认60),people(参与人),location(地点),priority(high/normal/low)}。只返回JSON数组不要其他文字。`;
+      })(),
       `今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用户说：${currentTranscript}`
     );
     const clean = rawText.replace(/\`\`\`json|\`\`\`/g,'').trim();
@@ -1234,9 +1249,10 @@ async function answerQuestion(question) {
     let resultHTML = '<div class="ai-label">AI 回复</div>' +
       '<div style="font-size:13px;color:var(--text);line-height:1.7;padding:8px 0">' + reply + '</div>';
     
-    // If there's an event to add, show the add button
+    // If there's an event to add, show the add button AND auto-add after 2 seconds
     if (eventToAdd) {
       window._pendingEvents = [eventToAdd];
+      const btnId = 'autoAddBtn';
       resultHTML += `
         <div class="ai-event-card" style="margin-top:10px">
           <div class="aec-bar" style="background:var(--cyan)"></div>
@@ -1244,12 +1260,22 @@ async function answerQuestion(question) {
             <div class="aec-title">${eventToAdd.title}</div>
             <div class="aec-meta">${eventToAdd.date} ${eventToAdd.time} · ${eventToAdd.duration||60}分钟${eventToAdd.people?' · '+eventToAdd.people:''}</div>
           </div>
-          <button class="aec-btn" onclick="addVoiceEvent(this,0)">+ 加入日历</button>
+          <button class="aec-btn" id="${btnId}" onclick="addVoiceEvent(this,0)">+ 加入日历</button>
         </div>`;
     }
     
     document.getElementById('aiResult').innerHTML = resultHTML;
     document.getElementById('aiResult').classList.add('show');
+
+    // Auto-add to calendar if event detected
+    if (eventToAdd) {
+      setTimeout(() => {
+        const btn = document.getElementById('autoAddBtn');
+        if (btn && !btn.classList.contains('added')) {
+          addVoiceEvent(btn, 0);
+        }
+      }, 2000); // Auto-add after 2 seconds
+    }
 
   } catch(e) {
     console.error('answerQuestion error:', e);
