@@ -331,7 +331,7 @@ function resolveKey(key) {
 }
 
 // ── Auth ──
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   const dbg = document.getElementById('loadingDebug');
 
   // Method 1: Token in URL hash (from callback.html backup)
@@ -345,8 +345,8 @@ window.addEventListener('load', () => {
         localStorage.setItem('gat_time', Date.now().toString());
       } catch(e) {}
       history.replaceState(null, '', window.location.pathname);
-      dbg.textContent = 'Token from URL ✓';
-      showApp();
+      dbg.textContent = 'Token from URL, verifying...';
+      await checkTokenAndInit();
       return;
     }
   }
@@ -355,15 +355,58 @@ window.addEventListener('load', () => {
   const stored = localStorage.getItem('gat');
   if (stored && stored.length > 10) {
     token = stored;
-    dbg.textContent = 'Token from storage ✓';
-    showApp();
+    dbg.textContent = 'Token from storage, verifying...';
+    await checkTokenAndInit();
     return;
   }
 
   // No token
   dbg.textContent = '无Token，跳转登录...';
-  setTimeout(() => { window.location.href = 'auth.html'; }, 800);
+  setTimeout(() => { window.location.href = 'auth.html'; }, 300);
 });
+
+// Safety net: if still loading after 4 seconds, go to login
+setTimeout(() => {
+  const ls = document.getElementById('loadingScreen');
+  if (ls && ls.style.display !== 'none') {
+    window.location.href = 'auth.html';
+  }
+}, 4000);
+
+async function checkTokenAndInit() {
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 8000);
+    
+    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+      throw new Error('Token invalid: ' + res.status);
+    }
+
+    const u = await res.json();
+    document.getElementById('userEmail').textContent = u.email || '';
+    const av = document.getElementById('userAvatar');
+    av.textContent = u.name ? u.name[0].toUpperCase() : '✓';
+    if (u.picture) {
+      av.style.backgroundImage = 'url(' + u.picture + ')';
+      av.style.backgroundSize = 'cover';
+      av.style.fontSize = '0';
+    }
+    showApp();
+    showToast('✓ 已连接 ' + u.email);
+
+  } catch(e) {
+    console.error('Token check failed:', e.message);
+    localStorage.removeItem('gat');
+    localStorage.removeItem('gat_time');
+    document.getElementById('loadingMsg').textContent = '登录失效，重新登录...';
+    setTimeout(() => { window.location.href = 'auth.html'; }, 1200);
+  }
+}
 
 function showApp() {
   document.getElementById('loadingScreen').style.display = 'none';
@@ -371,31 +414,7 @@ function showApp() {
   initSpeech();
   buildWeek();
   loadCal();
-  // Get user info silently
-  fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    headers: { Authorization: 'Bearer ' + token }
-  }).then(r => {
-    if (r.status === 401) {
-      localStorage.removeItem('gat');
-      showToast('登录已过期，请重新登录');
-      setTimeout(() => { window.location.href = 'auth.html'; }, 2000);
-      return;
-    }
-    return r.json();
-  }).then(u => {
-    if (!u) return;
-    document.getElementById('userEmail').textContent = u.email || '';
-    const av = document.getElementById('userAvatar');
-    av.textContent = u.name ? u.name[0].toUpperCase() : '✓';
-    if (u.picture) {
-      av.style.backgroundImage = 'url('+u.picture+')';
-      av.style.backgroundSize = 'cover';
-      av.style.fontSize = '0';
-    }
-    showToast('✓ 已连接 ' + u.email);
-  }).catch(() => {
-    document.getElementById('userAvatar').textContent = '✓';
-  });
+  // User info already set in checkTokenAndInit
 }
 
 function logout() {
