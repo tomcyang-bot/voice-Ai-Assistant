@@ -365,18 +365,12 @@ window.addEventListener('load', async () => {
   setTimeout(() => { window.location.href = 'auth.html'; }, 300);
 });
 
-// Safety net: if still loading after 4 seconds, go to login
-setTimeout(() => {
-  const ls = document.getElementById('loadingScreen');
-  if (ls && ls.style.display !== 'none') {
-    window.location.href = 'auth.html';
-  }
-}, 4000);
+// Safety net removed - was interfering with login
 
 async function checkTokenAndInit() {
   try {
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 8000);
+    setTimeout(() => controller.abort(), 15000);
     
     const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: 'Bearer ' + token },
