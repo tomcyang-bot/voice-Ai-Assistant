@@ -630,7 +630,7 @@ function initSpeech() {
   console.log('Speech API supported');
 }
 
-function toggleRecording() {
+async function toggleRecording() {
   if (isRecording) {
     if (recognition) recognition.stop();
     return;
@@ -697,23 +697,62 @@ function toggleRecording() {
     recognition.stop();
   };
 
+  // Safari requires explicit mic permission before starting
   try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Got permission - stop the stream and start recognition
+    stream.getTracks().forEach(t => t.stop());
     recognition.start();
-  } catch(e) {
-    console.error('Start error:', e);
-    showToast('启动失败，请重试');
+  } catch(permErr) {
+    console.error('Mic permission error:', permErr);
+    if (permErr.name === 'NotAllowedError' || permErr.name === 'SecurityError') {
+      document.getElementById('transcriptBox').innerHTML = `
+        <div style="background:rgba(255,94,94,0.08);border:1px solid rgba(255,94,94,0.2);border-radius:10px;padding:14px;text-align:left">
+          <div style="color:var(--warn);font-weight:700;font-size:13px;margin-bottom:8px">🎙 麦克风未授权</div>
+          <div style="color:#8090a0;font-size:12px;line-height:1.8">
+            <b style="color:var(--text)">iPhone Safari：</b><br>
+            设置 → Safari → 麦克风 → 允许<br><br>
+            <b style="color:var(--text)">iPhone Chrome：</b><br>
+            设置 → Chrome → 麦克风 → 开启<br><br>
+            <b style="color:var(--text)">设置完后</b>重新打开网页再试
+          </div>
+        </div>
+      `;
+    } else {
+      showToast('麦克风启动失败: ' + permErr.message);
+    }
     isRecording = false;
+    document.getElementById('micRing').classList.remove('listening');
+    document.getElementById('waveform').classList.remove('active');
+    document.getElementById('recordBtn').textContent = '🎙 开始录音';
+    document.getElementById('recordBtn').classList.remove('recording');
   }
 }
 
 function stopRecording() {
   isRecording = false;
+
+  // Force stop and release microphone completely
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    recognition = null; // destroy instance to release mic
+  }
+
+  // Also stop any media tracks if still active
+  if (navigator.mediaDevices) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => { stream.getTracks().forEach(t => t.stop()); })
+      .catch(() => {});
+  }
+
   document.getElementById('micRing').classList.remove('listening');
   document.getElementById('waveform').classList.remove('active');
   document.getElementById('voiceStatus').textContent = '点击麦克风说出日程';
   document.getElementById('recordBtn').textContent = '🎙 开始录音';
   document.getElementById('recordBtn').classList.remove('recording');
-  if (currentTranscript) document.getElementById('transcriptBox').innerHTML = currentTranscript;
+  if (currentTranscript) {
+    document.getElementById('transcriptBox').innerHTML = currentTranscript;
+  }
 }
 
 function useQuick(el) {
