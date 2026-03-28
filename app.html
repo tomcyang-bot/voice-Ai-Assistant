@@ -974,20 +974,59 @@ async function answerQuestion(question) {
       return `${start.toLocaleDateString('zh-CN', {month:'long',day:'numeric',weekday:'short'})} ${start.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})} - ${end.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})}: ${e.summary || '未命名'}`;
     }).filter(Boolean).join('\n');
 
-    const answer = await callClaude(
-      `你是用户的AI日历助理。今天是${now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用简短自然的中文口语回答用户关于日程的问题。回答要像真人助理一样，简洁友好，不超过60个字。用户的日历事件如下：${eventList || '本周暂无日程'}`,
+    // Use JSON response to handle both answers and event creation
+    const raw = await callClaude(
+      `你是用户的AI日历助理。今天是${now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。
+用户的日历事件：${eventList || '本周暂无日程'}
+
+请用JSON格式回复，包含：
+{
+  "reply": "你的口语回复（不超过60字）",
+  "hasEvent": true或false（用户是否要添加新日程）,
+  "event": 如果hasEvent为true，提供{title,date,time,duration,people,location,priority}，否则null
+}
+只返回JSON，不要其他文字。`,
       question
     );
 
+    let reply = '';
+    let eventToAdd = null;
+    
+    try {
+      const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+      const parsed = JSON.parse(clean);
+      reply = parsed.reply || raw;
+      if (parsed.hasEvent && parsed.event) {
+        eventToAdd = parsed.event;
+      }
+    } catch(e) {
+      reply = raw; // fallback to raw text
+    }
+
     document.getElementById('loadingBar').classList.remove('show');
     
-    // Show and speak the answer
-    speak(answer);
+    // Speak the answer
+    speak(reply);
     
-    // Also show action button to add if needed
-    document.getElementById('aiResult').innerHTML = 
-      '<div class="ai-label">AI 回复</div>' +
-      '<div style="font-size:13px;color:var(--text);line-height:1.7;padding:8px 0">' + answer + '</div>';
+    // Show reply
+    let resultHTML = '<div class="ai-label">AI 回复</div>' +
+      '<div style="font-size:13px;color:var(--text);line-height:1.7;padding:8px 0">' + reply + '</div>';
+    
+    // If there's an event to add, show the add button
+    if (eventToAdd) {
+      window._pendingEvents = [eventToAdd];
+      resultHTML += `
+        <div class="ai-event-card" style="margin-top:10px">
+          <div class="aec-bar" style="background:var(--cyan)"></div>
+          <div class="aec-info">
+            <div class="aec-title">${eventToAdd.title}</div>
+            <div class="aec-meta">${eventToAdd.date} ${eventToAdd.time} · ${eventToAdd.duration||60}分钟${eventToAdd.people?' · '+eventToAdd.people:''}</div>
+          </div>
+          <button class="aec-btn" onclick="addVoiceEvent(this,0)">+ 加入日历</button>
+        </div>`;
+    }
+    
+    document.getElementById('aiResult').innerHTML = resultHTML;
     document.getElementById('aiResult').classList.add('show');
 
   } catch(e) {
