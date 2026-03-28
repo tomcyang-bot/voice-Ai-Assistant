@@ -303,6 +303,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
 
+// ── Claude API helper ──
+async function callClaude(system, message) {
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, message })
+  });
+  if (!res.ok) throw new Error('API error: ' + res.status);
+  const data = await res.json();
+  return data.text;
+}
+
 // ── State ──
 let accessToken = null;
 let userInfo = null;
@@ -539,21 +551,13 @@ async function scanGmail() {
       return `发件人: ${from}\n主题: ${subject}`;
     }).join('\n---\n');
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        system: '分析邮件主题，找出包含会议/日程的邮件。返回JSON数组，每项包含：from(发件人简称), subject(主题), hasEvent(boolean), eventHint(如果有日程，简述内容，否则null)。只返回JSON。',
-        messages: [{ role: 'user', content: emailSummary }]
-      })
-    });
-
-    const aiData = await aiRes.json();
     let analyzed = [];
     try {
-      const clean = aiData.content[0].text.replace(/```json|```/g,'').trim();
+      const rawText = await callClaude(
+        '分析邮件主题，找出包含会议/日程的邮件。返回JSON数组，每项包含：from(发件人简称), subject(主题), hasEvent(boolean), eventHint(如果有日程，简述内容，否则null)。只返回JSON。',
+        emailSummary
+      );
+      const clean = rawText.replace(/\`\`\`json|\`\`\`/g,'').trim();
       analyzed = JSON.parse(clean);
     } catch(e) { analyzed = []; }
 
@@ -777,18 +781,11 @@ async function processTranscript() {
   document.getElementById('loadingBarMsg').textContent = 'AI 正在分析日程...';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        system: `你是日历助理。今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。从用户的话里提取日程，计算出具体日期（如"下周三"要算出实际日期），返回JSON数组，每项：{title(事件名),date(具体日期如"2026年4月1日"),time(24小时制如"11:00"),duration(分钟默认60),people(参与人),location(地点),priority(high/normal/low)}。只返回JSON数组不要其他文字。`,
-        messages: [{ role: 'user', content: `今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用户说：${currentTranscript}` }]
-      })
-    });
-    const data = await res.json();
-    const clean = data.content[0].text.replace(/```json|```/g,'').trim();
+    const rawText = await callClaude(
+      `你是日历助理。今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。从用户的话里提取日程，计算出具体日期（如"下周三"要算出实际日期），返回JSON数组，每项：{title(事件名),date(具体日期如"2026年4月1日"),time(24小时制如"11:00"),duration(分钟默认60),people(参与人),location(地点),priority(high/normal/low)}。只返回JSON数组不要其他文字。`,
+      `今天是${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用户说：${currentTranscript}`
+    );
+    const clean = rawText.replace(/\`\`\`json|\`\`\`/g,'').trim();
     const events = JSON.parse(clean);
     showAIResults(events);
   } catch(e) {
@@ -977,22 +974,10 @@ async function answerQuestion(question) {
       return `${start.toLocaleDateString('zh-CN', {month:'long',day:'numeric',weekday:'short'})} ${start.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})} - ${end.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'})}: ${e.summary || '未命名'}`;
     }).filter(Boolean).join('\n');
 
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: `你是用户的AI日历助理。今天是${now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。
-用简短自然的中文口语回答用户关于日程的问题。回答要像真人助理一样，简洁友好，不超过60个字。
-用户的日历事件如下：
-${eventList || '本周暂无日程'}`,
-        messages: [{ role: 'user', content: question }]
-      })
-    });
-
-    const aiData = await aiRes.json();
-    const answer = aiData.content[0].text.trim();
+    const answer = await callClaude(
+      `你是用户的AI日历助理。今天是${now.toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。用简短自然的中文口语回答用户关于日程的问题。回答要像真人助理一样，简洁友好，不超过60个字。用户的日历事件如下：${eventList || '本周暂无日程'}`,
+      question
+    );
 
     document.getElementById('loadingBar').classList.remove('show');
     
