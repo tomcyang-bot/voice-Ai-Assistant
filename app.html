@@ -90,27 +90,32 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .wd.today .wd-num,.wd.today .wd-name{color:var(--cyan);}
 .wd.selected .wd-num{color:var(--cyan);}
 .wd-dot{width:4px;height:4px;background:var(--cyan);border-radius:50%;margin:0 auto;visibility:hidden;}
-.tl-event{background:var(--surface);border:1px solid var(--border);border-left:3px solid #ea4335;border-radius:12px;padding:11px 13px;display:flex;gap:11px;align-items:center;cursor:pointer;transition:all .2s;margin-bottom:6px;}
+.tl-event{background:var(--surface);border:1px solid var(--border);border-left:3px solid #ea4335;border-radius:14px;padding:14px 14px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:all .2s;margin-bottom:8px;position:relative;overflow:hidden;}
+.tl-event::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(234,67,53,0.04),transparent 40%);pointer-events:none;}
 .tl-event.voice-ev{border-left-color:var(--cyan);}
-.tl-event:hover{border-color:var(--border2);}
-.tl-t{text-align:center;min-width:38px;flex-shrink:0;}
-.tl-h{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--cyan);line-height:1;}
-.tl-ap{font-size:9px;color:var(--muted2);text-transform:uppercase;}
+.tl-event.voice-ev::after{background:linear-gradient(90deg,rgba(0,229,255,0.04),transparent 40%);}
+.tl-event:hover{border-color:var(--border2);transform:translateX(2px);}
+.tl-t{text-align:center;min-width:44px;flex-shrink:0;background:rgba(0,229,255,0.06);border-radius:8px;padding:6px 4px;}
+.tl-h{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--cyan);line-height:1;}
+.tl-ap{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;}
 .tl-div{width:1px;background:var(--border);align-self:stretch;}
-.tl-info h4{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--white);margin-bottom:2px;}
-.tl-info p{font-size:10px;color:var(--muted2);}
-.tl-src{margin-left:auto;font-size:9px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(234,67,53,.1);color:#ea4335;}
-.tl-src.vs{background:rgba(0,229,255,.1);color:var(--cyan);}
-.empty-cal{text-align:center;padding:24px;border:1px dashed var(--border);border-radius:12px;margin-bottom:8px;}
-.empty-cal p{font-size:12px;color:var(--muted2);line-height:1.7;}
+.tl-info{flex:1;}
+.tl-info h4{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--white);margin-bottom:4px;line-height:1.3;}
+.tl-info p{font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:4px;}
+.tl-src{flex-shrink:0;font-size:9px;padding:3px 8px;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(234,67,53,.12);color:#ea4335;border:1px solid rgba(234,67,53,.2);}
+.tl-src.vs{background:rgba(0,229,255,.1);color:var(--cyan);border-color:rgba(0,229,255,.2);}
+.empty-cal{text-align:center;padding:28px 20px;border:1px dashed var(--border);border-radius:14px;margin-bottom:8px;}
+.empty-cal .ec-icon{font-size:28px;margin-bottom:8px;opacity:.6;}
+.empty-cal p{font-size:12px;color:var(--muted2);line-height:1.8;}
 
 /* Week all */
 .week-group{margin-bottom:10px;}
 .week-day-lbl{font-size:10px;color:var(--cyan);letter-spacing:1px;margin-bottom:5px;padding:0 2px;}
-.week-ev-chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:4px;cursor:pointer;}
-.wec-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.week-ev-chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;margin-bottom:5px;cursor:pointer;transition:all .2s;}
+.week-ev-chip:hover{border-color:var(--border2);background:var(--surface2);}
+.wec-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px currentColor;}
 .wec-title{font-size:12px;font-weight:600;color:var(--text);}
-.wec-time{font-size:10px;color:var(--muted2);}
+.wec-time{font-size:10px;color:var(--muted2);margin-top:2px;}
 
 /* Toast */
 .toast{position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-12px);background:var(--surface2);border:1px solid rgba(0,229,255,.3);border-radius:10px;padding:8px 16px;font-size:11px;color:var(--cyan);font-weight:500;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;}
@@ -219,12 +224,37 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
   </div>
 
+  <!-- Email Compose -->
+  <div class="email-wrap" id="emailWrap" style="display:none;padding:14px;">
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);margin-bottom:10px;">✉️ 语音写邮件</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input id="emailTo" placeholder="收件人邮箱" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;">
+        <input id="emailSubject" placeholder="主题" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="startEmailRec()" id="emailRecBtn" style="flex:1;padding:10px;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);color:var(--cyan);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🎙 口述邮件内容</button>
+        <button onclick="aiWriteEmail()" id="aiEmailBtn" style="flex:1;padding:10px;background:rgba(61,106,255,0.15);border:1px solid rgba(61,106,255,0.3);color:#7a9aff;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;" disabled>✦ AI 润色</button>
+      </div>
+      <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:120px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:10px;">
+        <span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveEmailDraft()" style="flex:2;padding:11px;background:var(--cyan);color:var(--bg);border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));">💾 保存草稿</button>
+        <button onclick="sendEmail()" style="flex:2;padding:11px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.25);color:var(--cyan);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">📤 确认发送</button>
+        <button onclick="clearEmail()" style="flex:1;padding:11px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:10px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">清除</button>
+      </div>
+    </div>
+    <!-- Saved drafts -->
+    <div id="savedDrafts"></div>
+  </div>
+
   <div class="bnav">
     <div class="ni active">
       <svg fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#00e5ff" stroke-width="1.8"/><line x1="3" y1="10" x2="21" y2="10" stroke="#00e5ff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/></svg>
       <div class="ni-lbl" style="color:var(--cyan)">日历</div>
     </div>
-    <div class="ni" onclick="showToast('Gmail 扫描即将上线')">
+    <div class="ni" id="navEmail" onclick="switchTab('email')">
       <svg fill="none" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" stroke-width="1.8"/><polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8"/></svg>
       <div class="ni-lbl">邮件</div>
     </div>
@@ -248,6 +278,17 @@ let chatHistory = [];
 let weekOffset = 0;
 let selectedDate = new Date();
 let weekEvents = [];
+
+let sessionState = {
+  mode: 'idle',
+  pendingCancelEvent: null,
+  pendingCreateEvent: null
+};
+
+function resetConversation() {
+  chatHistory = [];
+  sessionState = { mode:'idle', pendingCancelEvent:null, pendingCreateEvent:null };
+}
 
 // ── Date Calculator ──
 function getDateMap() {
@@ -475,23 +516,86 @@ function setInput(txt) {
 
 // ── Process ──
 async function process() {
-  if (!transcript.trim()) return;
+  const txt = transcript.trim();
+  if (!txt) return;
+
+  // Handle cancel confirmation state via voice
+  if (sessionState.mode === 'cancel_confirm') {
+    const yesWords = ['对','是','确认','取消','删掉','删除','可以','好'];
+    const noWords = ['不是','不对','不要','算了','先别','保留'];
+
+    if (yesWords.some(w => txt.includes(w))) {
+      if (sessionState.pendingCancelEvent && sessionState.pendingCancelEvent.event) {
+        const ev = sessionState.pendingCancelEvent.event;
+        try {
+          await deleteEvById(ev.id);
+          speak(ev.summary + ' 已成功取消');
+          showToast('✓ 已取消：' + ev.summary);
+          document.getElementById('aiReply').classList.remove('show');
+          sessionState.mode = 'idle';
+          sessionState.pendingCancelEvent = null;
+          await loadCal();
+        } catch(e) { showToast('取消失败'); }
+        return;
+      }
+      if (sessionState.pendingCancelEvent && sessionState.pendingCancelEvent.candidates) {
+        const arr = sessionState.pendingCancelEvent.candidates;
+        let idx = 0;
+        if (txt.includes('第二')) idx = 1;
+        else if (txt.includes('第三')) idx = 2;
+        const ev = arr[idx];
+        if (ev) {
+          try {
+            await deleteEvById(ev.id);
+            speak(ev.summary + ' 已成功取消');
+            showToast('✓ 已取消：' + ev.summary);
+            document.getElementById('aiReply').classList.remove('show');
+            sessionState.mode = 'idle';
+            sessionState.pendingCancelEvent = null;
+            await loadCal();
+          } catch(e) { showToast('取消失败'); }
+          return;
+        }
+      }
+    }
+
+    if (noWords.some(w => txt.includes(w))) {
+      speak('好的，保留这个会议。');
+      document.getElementById('aiReplyText').textContent = '好的，会议已保留。';
+      document.getElementById('aiEventCard').innerHTML = '';
+      sessionState.mode = 'idle';
+      sessionState.pendingCancelEvent = null;
+      return;
+    }
+  }
+
+  // New task detection - reset conversation for fresh tasks
+  const isNewTask = ['新建','安排','创建','取消','删除','改到','改成','帮我'].some(w => txt.includes(w));
+  if (sessionState.mode === 'idle' && isNewTask) resetConversation();
+
   document.getElementById('aiReply').classList.remove('show');
   document.getElementById('loadingBar').classList.add('show');
   document.getElementById('loadingBarMsg').textContent = 'AI 分析中...';
   document.getElementById('aiBtn').disabled = true;
 
-  const system = `你是AI日历助理，负责多轮对话收集日程信息。
+  const evList = weekEvents.map(e => {
+    const dt = e.start.dateTime ? new Date(e.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : e.start.date;
+    return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
+  }).join('\n') || '暂无日程';
+
+  const system = `你是AI日历助理，负责多轮对话管理日程。
 日期对应（由系统计算，直接用）：${dateCtxStr()}
 
-规则：
-1. 信息足够 → 返回JSON: {"action":"create","title":"事件名","day_key":"next_mon","time":"14:00","duration":60,"people":"","location":""}
-2. 信息不足 → 返回JSON: {"action":"ask","reply":"追问内容"}
-3. 用户回答上一问题 → 合并上下文处理
-4. 用户查询日程 → 返回JSON: {"action":"query","reply":"回答内容"}
+当前本周日程：
+${evList}
 
-day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun
-只返回JSON，不加其他文字。`;
+规则（只返回JSON，不加其他文字）：
+1. 创建事件 → {"action":"create","title":"事件名","day_key":"today","time":"14:00","duration":60,"people":"","location":""}
+2. 询问更多信息 → {"action":"ask","reply":"追问内容"}
+3. 查询日程 → {"action":"query","reply":"回答内容"}
+4. 取消/删除会议 → {"action":"cancel","keyword":"用户提到的关键词"}
+
+day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun`;
 
   try {
     const raw = await callAI(system, transcript);
@@ -505,6 +609,42 @@ day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun
       speak(parsed.reply);
       document.getElementById('aiReplyText').textContent = parsed.reply;
       document.getElementById('aiEventCard').innerHTML = '';
+      document.getElementById('aiReply').classList.add('show');
+
+    } else if (parsed.action === 'cancel') {
+      const keyword = parsed.keyword || '';
+      const result = smartMatchEvent(weekEvents, keyword);
+
+      if (!result) {
+        speak('我没找到对应的会议，能再说具体一点吗？');
+        document.getElementById('aiReplyText').textContent = '没找到匹配的会议，请补充日期、时间或名字。';
+        document.getElementById('aiEventCard').innerHTML = '';
+        document.getElementById('aiReply').classList.add('show');
+        return;
+      }
+
+      if (result.ambiguous) {
+        sessionState.mode = 'cancel_confirm';
+        sessionState.pendingCancelEvent = { candidates: result.candidates };
+        const cards = result.candidates.map((ev,i) => {
+          const dt2 = ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : ev.start.date;
+          return '<div class="ai-event"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+(i+1)+'. '+ev.summary+'</div><div class="ae-meta">'+dt2+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(''+ev.id+'',''+ev.summary.replace(/'/g,'`')+'',this)">取消</button></div>';
+        }).join('');
+        speak('我找到多个可能的会议，请确认是哪一个。');
+        document.getElementById('aiReplyText').textContent = '找到多个会议，请点选或说"第一个""第二个"：';
+        document.getElementById('aiEventCard').innerHTML = cards;
+        document.getElementById('aiReply').classList.add('show');
+        return;
+      }
+
+      const match = result.match;
+      sessionState.mode = 'cancel_confirm';
+      sessionState.pendingCancelEvent = { event: match };
+      const dt = match.start.dateTime ? new Date(match.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : match.start.date;
+      const msg = '找到了：' + match.summary + '（' + dt + '），确认取消吗？';
+      speak(msg);
+      document.getElementById('aiReplyText').textContent = msg;
+      document.getElementById('aiEventCard').innerHTML = '<div class="ai-event" style="border-left-color:var(--warn)"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+match.summary+'</div><div class="ae-meta">'+dt+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(''+match.id+'',''+match.summary.replace(/'/g,'`')+'',this)">确认取消</button></div>';
       document.getElementById('aiReply').classList.add('show');
 
     } else if (parsed.action === 'create') {
@@ -573,7 +713,7 @@ async function addEv(btn, ev) {
     btn.textContent = '✓ 已加入';
     btn.classList.add('done');
     showToast('✓ "' + ev.title + '" 已加入日历');
-    chatHistory = []; // Reset conversation after successful add
+    sessionState.mode = 'idle'; sessionState.pendingCreateEvent = null;
     await loadCal();
   } catch(e) {
     btn.textContent = '+ 加入';
@@ -660,23 +800,37 @@ function renderDay(evs) {
   const lbl = document.getElementById('dayLabel');
   if (lbl) lbl.textContent = (selectedDate.getMonth()+1)+'月'+selectedDate.getDate()+'日 '+dn[selectedDate.getDay()];
   const cnt = document.getElementById('evCount');
-  if (cnt) cnt.textContent = evs.length ? evs.length+'个' : '';
+  if (cnt) cnt.textContent = evs.length ? evs.length+' 个事件' : '';
   const c = document.getElementById('dayEvents');
-  if (!evs.length) { c.innerHTML = '<div class="empty-cal"><p>这天没有日程<br>用语音添加 🎙</p></div>'; return; }
+  if (!evs.length) {
+    c.innerHTML = '<div class="empty-cal"><div class="ec-icon">📅</div><p>这天没有日程<br>用语音说出来就能添加 🎙</p></div>';
+    return;
+  }
   c.innerHTML = '';
   evs.forEach(ev => {
     const dt = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
+    const endDt = ev.end && ev.end.dateTime ? new Date(ev.end.dateTime) : null;
     const h = dt ? dt.getHours() : 0;
-    const displayH = h>12?h-12:h;
+    const displayH = h>12?h-12:h===0?12:h;
     const mn = dt ? String(dt.getMinutes()).padStart(2,'0') : '00';
     const ap = h>=12?'PM':'AM';
+    const endStr = endDt ? endDt.toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+    const loc = ev.location ? '📍 '+ev.location : '';
+    const desc = ev.description ? ev.description.slice(0,40) : '';
     const el = document.createElement('div');
     el.className = 'tl-event';
     el.innerHTML = `
-      <div class="tl-t"><div class="tl-h">${dt?displayH+':'+mn:'全天'}</div><div class="tl-ap">${dt?ap:''}</div></div>
+      <div class="tl-t">
+        <div class="tl-h">${dt?displayH+':'+mn:'全天'}</div>
+        <div class="tl-ap">${dt?ap:''}</div>
+      </div>
       <div class="tl-div"></div>
-      <div class="tl-info"><h4>${ev.summary||'无标题'}</h4><p>${ev.location||''}</p></div>
-      <div class="tl-src">Calendar</div>`;
+      <div class="tl-info">
+        <h4>${ev.summary||'无标题'}</h4>
+        <p>${endStr?'⏱ 至'+endStr+' ':''} ${loc}</p>
+        ${desc?'<p style="margin-top:2px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">'+desc+'</p>':''}
+      </div>
+      <button onclick="deleteEv('${ev.id}',this)" style="flex-shrink:0;padding:4px 10px;background:rgba(255,94,94,0.08);border:1px solid rgba(255,94,94,0.2);color:var(--warn);border-radius:8px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">取消</button>`;
     c.appendChild(el);
   });
 }
@@ -707,6 +861,297 @@ function renderWeek(evs) {
     });
     c.appendChild(el);
   });
+}
+
+// ── Tab switching ──
+let currentTab = 'calendar';
+function switchTab(tab) {
+  currentTab = tab;
+  const calWrap = document.querySelector('.cal-wrap');
+  const emailWrap = document.getElementById('emailWrap');
+  const voiceWrap = document.querySelector('.voice-wrap');
+  const navEmail = document.getElementById('navEmail');
+  
+  if (tab === 'email') {
+    if (calWrap) calWrap.style.display = 'none';
+    if (emailWrap) emailWrap.style.display = 'block';
+    if (navEmail) { navEmail.classList.add('active'); navEmail.querySelector('.ni-lbl').style.color='var(--cyan)'; }
+    document.querySelector('.ni.active:not(#navEmail)')?.classList.remove('active');
+  } else {
+    if (calWrap) calWrap.style.display = 'block';
+    if (emailWrap) emailWrap.style.display = 'none';
+    if (navEmail) { navEmail.classList.remove('active'); navEmail.querySelector('.ni-lbl').style.color=''; }
+  }
+}
+
+// ── Email Voice & Compose ──
+let emailRecog = null;
+let emailIsRec = false;
+let savedDrafts = [];
+
+async function startEmailRec() {
+  if (emailIsRec) {
+    emailRecog && emailRecog.abort();
+    emailIsRec = false;
+    document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('请直接在邮件框内打字'); return; }
+
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(t => t.stop());
+  } catch(e) { showToast('请允许麦克风权限'); return; }
+
+  emailRecog = new SR();
+  emailRecog.lang = 'zh-CN';
+  emailRecog.continuous = false;
+  emailRecog.interimResults = true;
+
+  emailRecog.onstart = () => {
+    emailIsRec = true;
+    document.getElementById('emailRecBtn').textContent = '⏹ 停止';
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在听...</span>';
+  };
+
+  emailRecog.onresult = e => {
+    let txt = '';
+    for (let i=e.resultIndex; i<e.results.length; i++) txt += e.results[i][0].transcript;
+    document.getElementById('emailDraft').textContent = txt;
+  };
+
+  emailRecog.onend = () => {
+    emailIsRec = false;
+    document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
+    const content = document.getElementById('emailDraft').innerText;
+    if (content && content.trim()) {
+      document.getElementById('aiEmailBtn').disabled = false;
+      showToast('录音完成，点击 AI 润色');
+    }
+  };
+
+  try { emailRecog.start(); } catch(e) { showToast('启动失败，请重试'); }
+}
+
+async function aiWriteEmail() {
+  const rough = document.getElementById('emailDraft').innerText.trim();
+  const to = document.getElementById('emailTo').value.trim();
+  const subject = document.getElementById('emailSubject').value.trim();
+  if (!rough) { showToast('请先口述或输入邮件内容'); return; }
+
+  document.getElementById('aiEmailBtn').textContent = '✦ AI 写作中...';
+  document.getElementById('aiEmailBtn').disabled = true;
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: '你是专业的商务邮件助理。根据用户提供的粗略内容，写一封完整、专业、友好的商务邮件正文。语气自然，不要太正式，适合澳洲商务环境。直接输出邮件正文，不要加"主题："等标签。',
+        messages: [{ role: 'user', content: `收件人：${to||'对方'}
+主题：${subject||'邮件'}
+
+我想表达的大概意思：${rough}
+
+请帮我写成完整的邮件正文。` }]
+      })
+    });
+    const data = await res.json();
+    document.getElementById('emailDraft').textContent = data.text;
+    document.getElementById('aiEmailBtn').textContent = '✦ 重新润色';
+    document.getElementById('aiEmailBtn').disabled = false;
+    showToast('AI 邮件已生成，可以修改后发送');
+  } catch(e) {
+    document.getElementById('aiEmailBtn').textContent = '✦ AI 润色';
+    document.getElementById('aiEmailBtn').disabled = false;
+    showToast('生成失败，请重试');
+  }
+}
+
+function saveEmailDraft() {
+  const to = document.getElementById('emailTo').value.trim();
+  const subject = document.getElementById('emailSubject').value.trim();
+  const body = document.getElementById('emailDraft').innerText.trim();
+  if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
+
+  const draft = { id: Date.now(), to, subject, body, savedAt: new Date().toLocaleString('zh') };
+  savedDrafts.unshift(draft);
+  renderDrafts();
+  showToast('✓ 草稿已保存');
+}
+
+function renderDrafts() {
+  const c = document.getElementById('savedDrafts');
+  if (!savedDrafts.length) { c.innerHTML = ''; return; }
+  c.innerHTML = '<div style="font-family:Syne,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);margin:12px 0 8px">已保存草稿</div>';
+  savedDrafts.forEach((d,i) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:6px;cursor:pointer;';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--white)">${d.subject||'无主题'}</div>
+        <div style="font-size:10px;color:var(--muted2)">${d.savedAt}</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted2);margin-bottom:6px">至: ${d.to||'未填收件人'}</div>
+      <div style="font-size:11px;color:#5a7090;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${d.body}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="loadDraft(${i})" style="flex:1;padding:6px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">编辑</button>
+        <button onclick="sendDraft(${i})" style="flex:2;padding:6px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📤 发送</button>
+        <button onclick="deleteDraft(${i})" style="flex:1;padding:6px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">删除</button>
+      </div>`;
+    c.appendChild(el);
+  });
+}
+
+function loadDraft(i) {
+  const d = savedDrafts[i];
+  document.getElementById('emailTo').value = d.to;
+  document.getElementById('emailSubject').value = d.subject;
+  document.getElementById('emailDraft').textContent = d.body;
+  document.getElementById('aiEmailBtn').disabled = false;
+  showToast('草稿已加载，可以继续编辑');
+}
+
+function deleteDraft(i) {
+  savedDrafts.splice(i,1);
+  renderDrafts();
+  showToast('草稿已删除');
+}
+
+async function sendEmail() {
+  const to = document.getElementById('emailTo').value.trim();
+  const subject = document.getElementById('emailSubject').value.trim();
+  const body = document.getElementById('emailDraft').innerText.trim();
+
+  if (!to) { showToast('请填写收件人邮箱'); return; }
+  if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
+
+  // Create Gmail draft via API
+  try {
+    const email = [`To: ${to}`, `Subject: ${subject||'(无主题)'}`, 'Content-Type: text/plain; charset=utf-8', '', body].join('
+');
+    const encoded = btoa(unescape(encodeURIComponent(email))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { raw: encoded } })
+    });
+
+    if (res.ok) {
+      showToast('✓ 邮件已保存到 Gmail 草稿箱');
+      speak('邮件已保存到草稿箱，请在 Gmail 中确认后发送');
+      clearEmail();
+    } else {
+      const err = await res.json();
+      throw new Error(err.error?.message || res.status);
+    }
+  } catch(e) {
+    showToast('发送失败: ' + e.message);
+  }
+}
+
+async function sendDraft(i) {
+  const d = savedDrafts[i];
+  document.getElementById('emailTo').value = d.to;
+  document.getElementById('emailSubject').value = d.subject;
+  document.getElementById('emailDraft').textContent = d.body;
+  await sendEmail();
+  deleteDraft(i);
+}
+
+function clearEmail() {
+  document.getElementById('emailTo').value = '';
+  document.getElementById('emailSubject').value = '';
+  document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>';
+  document.getElementById('aiEmailBtn').disabled = true;
+}
+
+// ── Delete Event ──
+async function deleteEvById(eventId) {
+  const res = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events/' + eventId,
+    { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } }
+  );
+  if (!res.ok && res.status !== 204) throw new Error('删除失败 ' + res.status);
+}
+
+// upgraded smartMatchEvent
+function smartMatchEvent(events, keyword) {
+  keyword = (keyword || '').toLowerCase().trim();
+  if (!keyword) return null;
+
+  const now = new Date();
+  const tomorrow = new Date(); tomorrow.setDate(now.getDate()+1);
+
+  function getDayScore(evDate, kw) {
+    let score = 0;
+    if (kw.includes('今天') && evDate.toDateString()===now.toDateString()) score += 8;
+    if (kw.includes('明天') && evDate.toDateString()===tomorrow.toDateString()) score += 8;
+    const wdMap = {'周一':1,'星期一':1,'周二':2,'星期二':2,'周三':3,'星期三':3,'周四':4,'星期四':4,'周五':5,'星期五':5,'周六':6,'星期六':6,'周日':0,'星期日':0,'周天':0,'星期天':0};
+    for (const k in wdMap) { if (kw.includes(k) && evDate.getDay()===wdMap[k]) score += 6; }
+    if (kw.includes('上午') && evDate.getHours()<12) score += 3;
+    if (kw.includes('下午') && evDate.getHours()>=12) score += 3;
+    if (kw.includes('晚上') && evDate.getHours()>=18) score += 3;
+    return score;
+  }
+
+  function getTimeScore(evDate, kw) {
+    let score = 0;
+    const hm = kw.match(/(\d{1,2})[:点](\d{0,2})?/);
+    if (hm) {
+      const kh = parseInt(hm[1],10);
+      const km = hm[2] ? parseInt(hm[2],10) : 0;
+      if (evDate.getHours()===kh) score += 5;
+      if (evDate.getMinutes()===km) score += 2;
+    }
+    return score;
+  }
+
+  function getTextScore(text, kw) {
+    let score = 0;
+    if (text.includes(kw)) score += 10;
+    const parts = kw.split(/[\s，。、]+/).filter(p => p.length > 0);
+    parts.forEach(p => {
+      if (p.length>=2 && text.includes(p)) score += 4;
+      else if (p.length===1 && text.includes(p)) score += 1;
+    });
+    return score;
+  }
+
+  const ranked = events.map(ev => {
+    const evDate = new Date(ev.start.dateTime||ev.start.date);
+    const text = [(ev.summary||''),(ev.location||''),(ev.description||'')].join(' ').toLowerCase();
+    let score = getTextScore(text,keyword) + getDayScore(evDate,keyword) + getTimeScore(evDate,keyword);
+    const diffH = Math.abs(evDate-now)/3600000;
+    if (diffH<24) score += 2;
+    if (diffH<3) score += 2;
+    return {ev, score};
+  }).sort((a,b)=>b.score-a.score);
+
+  if (!ranked.length || ranked[0].score<5) return null;
+  if (ranked[1] && ranked[0].score-ranked[1].score<=2) {
+    return { ambiguous:true, candidates:ranked.slice(0,3).map(x=>x.ev) };
+  }
+  return { ambiguous:false, match:ranked[0].ev };
+}
+
+
+// ── Delete by click ──
+async function deleteEv(eventId, btn) {
+  if (!confirm('确定取消这个日程？')) return;
+  btn.textContent = '删除中...';
+  btn.disabled = true;
+  try {
+    await deleteEvById(eventId);
+    showToast('✓ 日程已取消');
+    await loadCal();
+  } catch(e) {
+    btn.textContent = '取消';
+    btn.disabled = false;
+    showToast('删除失败: ' + e.message);
+  }
 }
 
 // ── Toast ──
