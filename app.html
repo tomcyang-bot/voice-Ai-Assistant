@@ -644,7 +644,9 @@ day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun`;
         sessionState.pendingCancelEvent = { candidates: result.candidates };
         const cards = result.candidates.map((ev,i) => {
           const dt2 = ev.start.dateTime ? new Date(ev.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : ev.start.date;
-          return '<div class="ai-event"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+(i+1)+'. '+ev.summary+'</div><div class="ae-meta">'+dt2+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(''+ev.id+'',''+ev.summary.replace(/'/g,'`')+'',this)">取消</button></div>';
+          const safeId = ev.id;
+          const safeName = (ev.summary||'').replace(/'/g,'`');
+          return '<div class="ai-event"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+(i+1)+'. '+ev.summary+'</div><div class="ae-meta">'+dt2+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(this.dataset.id,this.dataset.name,this)" data-id="'+safeId+'" data-name="'+safeName+'">取消</button></div>';
         }).join('');
         speak('我找到多个可能的会议，请确认是哪一个。');
         document.getElementById('aiReplyText').textContent = '找到多个会议，请点选或说"第一个""第二个"：';
@@ -660,7 +662,9 @@ day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun`;
       const msg = '找到了：' + match.summary + '（' + dt + '），确认取消吗？';
       speak(msg);
       document.getElementById('aiReplyText').textContent = msg;
-      document.getElementById('aiEventCard').innerHTML = '<div class="ai-event" style="border-left-color:var(--warn)"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+match.summary+'</div><div class="ae-meta">'+dt+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(''+match.id+'',''+match.summary.replace(/'/g,'`')+'',this)">确认取消</button></div>';
+      const safeMatchId = match.id;
+      const safeMatchName = (match.summary||'').replace(/'/g,'`');
+      document.getElementById('aiEventCard').innerHTML = '<div class="ai-event" style="border-left-color:var(--warn)"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+match.summary+'</div><div class="ae-meta">'+dt+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(this.dataset.id,this.dataset.name,this)" data-id="'+safeMatchId+'" data-name="'+safeMatchName+'">确认取消</button></div>';
       document.getElementById('aiReply').classList.add('show');
 
     } else if (parsed.action === 'create') {
