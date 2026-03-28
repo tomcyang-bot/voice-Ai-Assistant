@@ -327,610 +327,204 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <script>
-// ── Config ──
-const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar';
 
-// ── Claude API helper ──
-async function callClaude(system, message) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout
-
-  try {
-    const res = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system, message }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error('API error ' + res.status + ': ' + err);
-    }
-    const data = await res.json();
-    return data.text;
-  } catch(e) {
-    clearTimeout(timeout);
-    if (e.name === 'AbortError') throw new Error('请求超时，请重试');
-    throw e;
-  }
-}
-
-// ── State ──
-let accessToken = null;
-let userInfo = null;
-let isRecording = false;
-let recognition = null;
-let currentTranscript = '';
-let localEvents = [];
+// ===== STATE =====
 let conversationMode = false;
-let currentDraftEvent = null;
+let currentDraftEvents = [];
+let currentTranscript = '';
+let accessToken = localStorage.getItem('gat');
 
-// ── Auth ──
-window.addEventListener('load', async () => {
-  const hash = window.location.hash;
-  const stored = localStorage.getItem('gat');
+// ===== Claude =====
+async function callClaude(system, message) {
+  const res = await fetch('/api/claude', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({system,message})
+  });
+  const data = await res.json();
+  return data.text;
+}
 
-  if (hash && hash.includes('access_token')) {
-    const hashParams = new URLSearchParams(hash.substring(1));
-    accessToken = hashParams.get('access_token');
-    if (accessToken) {
-      localStorage.setItem('gat', accessToken);
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-      await initApp();
+// ===== 工具 =====
+function clean(t){
+  return t.replace(/```json|```/g,'').trim();
+}
+
+function isModification(text){
+  return ['改','换','调整','提前','延后'].some(w=>text.includes(w));
+}
+
+function isAvailabilityQuery(text){
+  return text.includes('几点有空') || text.includes('什么时候有空');
+}
+
+// ===== 主逻辑 =====
+async function processTranscript(){
+
+  if(!currentTranscript) return;
+
+  loadingBar.classList.add('show');
+
+  try {
+
+    // ===== 查询空闲 =====
+    if(isAvailabilityQuery(currentTranscript)){
+      await handleAvailabilityQuery();
+      loadingBar.classList.remove('show');
       return;
     }
-  }
-  
-  if (stored && stored !== 'null' && stored !== 'undefined') {
-    accessToken = stored;
-    await initApp();
-    return;
-  }
 
-  document.getElementById('loadingMsg').textContent = '跳转到登录页...';
-  setTimeout(() => { window.location.href = 'auth.html'; }, 1000);
-});
-
-async function initApp() {
-  document.getElementById('loadingMsg').textContent = '正在获取账号信息...';
-  try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
-    
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('UserInfo error:', res.status, errText);
-      localStorage.removeItem('gat');
-      document.getElementById('loadingMsg').textContent = '登录已过期，重新登录...';
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-      return;
-    }
-    
-    userInfo = await res.json();
-    console.log('User:', userInfo.email);
-
-    document.getElementById('userEmail').textContent = userInfo.email || '';
-    document.getElementById('userAvatar').textContent = userInfo.name ? userInfo.name[0].toUpperCase() : '?';
-    if (userInfo.picture) {
-      const av = document.getElementById('userAvatar');
-      av.style.backgroundImage = `url(${userInfo.picture})`;
-      av.style.backgroundSize = 'cover';
-      av.style.fontSize = '0';
-    }
-
-    document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'block';
-
-    buildWeekStrip();
-    initSpeech();
-    showToast(`✓ 已连接 ${userInfo.email}`);
-    loadCalendar().catch(e => console.error('Calendar load error:', e));
-    
-  } catch(e) {
-    console.error('initApp error:', e);
-    document.getElementById('loadingMsg').textContent = '连接失败: ' + e.message;
-    setTimeout(() => {
-      localStorage.removeItem('gat');
-      window.location.href = 'auth.html';
-    }, 3000);
-  }
-}
-
-function logout() {
-  localStorage.removeItem('gat');
-  window.location.href = 'auth.html';
-}
-// ── Speech ──
-function initSpeech() {
-  try {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    recognition = new SR();
-    recognition.lang = 'zh-CN';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onresult = (e) => {
-      let interim = '';
-      let final = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          final += e.results[i][0].transcript;
-        } else {
-          interim += e.results[i][0].transcript;
-        }
-      }
-      currentTranscript = final || interim;
-      updateTranscriptDisplay(interim && !final ? interim : null);
-    };
-
-    recognition.onerror = (e) => {
-      console.error('Speech error:', e);
-      stopRecording();
-      showToast('语音识别失败');
-    };
-
-    recognition.onend = () => {
-      if (isRecording) recognition.start();
-    };
-  } catch (e) {
-    console.error('Speech init failed:', e);
-  }
-}
-
-function toggleRecording() {
-  if (!recognition) return showToast('浏览器不支持语音识别');
-
-  if (!isRecording) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        stream.getTracks().forEach(t => t.stop());
-        startRecording();
-      })
-      .catch(() => showToast('需要麦克风权限'));
-  } else {
-    stopRecording();
-  }
-}
-
-function startRecording() {
-  isRecording = true;
-  recognition.start();
-  document.getElementById('micRing').classList.add('listening');
-  document.getElementById('waveform').classList.add('active');
-  document.getElementById('recordBtn').textContent = '⏹ 停止录音';
-  document.getElementById('recordBtn').classList.add('recording');
-  document.getElementById('voiceStatus').textContent = '正在听...';
-  clearTranscript();
-}
-
-function stopRecording() {
-  isRecording = false;
-  recognition.stop();
-  document.getElementById('micRing').classList.remove('listening');
-  document.getElementById('waveform').classList.remove('active');
-  document.getElementById('recordBtn').textContent = '🎙 开始录音';
-  document.getElementById('recordBtn').classList.remove('recording');
-  document.getElementById('voiceStatus').textContent = '点击麦克风说出日程';
-
-  if (currentTranscript.trim()) {
-    document.getElementById('processBtn').disabled = false;
-    showToast('✓ 识别完成，点击 AI 分析');
-  }
-}
-
-// ── Transcript ──
-function updateTranscriptDisplay(interimText = null) {
-  const box = document.getElementById('transcriptBox');
-  
-  if (interimText) {
-    box.innerHTML = `<span>${interimText}</span><span class="transcript-cursor"></span>`;
-  } else if (currentTranscript) {
-    box.textContent = currentTranscript;
-  }
-}
-
-function clearTranscript() {
-  currentTranscript = '';
-  const box = document.getElementById('transcriptBox');
-  box.innerHTML = '<span class="transcript-placeholder">点击麦克风说话，或直接在这里打字...</span>';
-  document.getElementById('processBtn').disabled = true;
-}
-
-function onTranscriptInput() {
-  const text = document.getElementById('transcriptBox').innerText.trim();
-  currentTranscript = text;
-  document.getElementById('processBtn').disabled = !text;
-}
-
-function useQuick(el) {
-  const text = el.innerText.replace(/"/g, '');
-  currentTranscript = text;
-  document.getElementById('transcriptBox').textContent = text;
-  document.getElementById('processBtn').disabled = false;
-}
-
-// ── 对话辅助 ──
-function isModification(text) {
-  return ['改','换','调整','推迟','提前','延后'].some(w => text.includes(w));
-}
-
-// ── 核心 AI 逻辑（升级版） ──
-async function processTranscript() {
-  if (!currentTranscript) return;
-
-  document.getElementById('aiResult').classList.remove('show');
-  document.getElementById('processBtn').disabled = true;
-
-  document.getElementById('loadingBar').classList.add('show');
-  document.getElementById('loadingBarMsg').textContent = 'AI 正在分析...';
-
-  try {
-
-    // ===== 修改逻辑 =====
-    if (isModification(currentTranscript) && currentDraftEvent) {
+    // ===== 修改 =====
+    if(isModification(currentTranscript) && currentDraftEvents.length){
 
       const raw = await callClaude(
 `当前事件：
-${JSON.stringify(currentDraftEvent)}
+${JSON.stringify(currentDraftEvents)}
 
 用户修改：
 ${currentTranscript}
 
 返回JSON：
-{"event":{}}`
+{"events":[]}`
       );
 
-      const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
-      currentDraftEvent = obj.event;
+      const obj = JSON.parse(clean(raw));
+      currentDraftEvents = obj.events;
 
-      document.getElementById('loadingBar').classList.remove('show');
-
-      speak(`已修改为 ${obj.event.date} ${obj.event.time}`);
-      showAIResults([obj.event]);
+      loadingBar.classList.remove('show');
+      speak("已修改");
+      showAIResults(obj.events);
       return;
     }
 
-    // ===== 对话模式 =====
-    if (conversationMode) {
+    // ===== 对话补充 =====
+    if(conversationMode){
 
       const raw = await callClaude(
-`你是日历助手。
-
-当前事件：
-${JSON.stringify(currentDraftEvent)}
+`当前事件：
+${JSON.stringify(currentDraftEvents)}
 
 用户补充：
 ${currentTranscript}
 
 返回JSON：
-{
- "complete": true/false,
- "event": {...},
- "reply": ""
-}`
+{"complete":true,"events":[],"reply":""}`
       );
 
-      const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
-      currentDraftEvent = obj.event;
+      const obj = JSON.parse(clean(raw));
+      currentDraftEvents = obj.events;
 
-      if (!obj.complete) {
-        document.getElementById('loadingBar').classList.remove('show');
+      if(obj.complete !== true){
+        loadingBar.classList.remove('show');
         speak(obj.reply);
         return;
       }
 
       conversationMode = false;
 
-      document.getElementById('loadingBar').classList.remove('show');
-      showAIResults([obj.event]);
+      loadingBar.classList.remove('show');
+      showAIResults(obj.events);
       return;
     }
 
-    // ===== 初次解析 =====
+    // ===== 初次 =====
     const raw = await callClaude(
-`你是日历助手。
-
-返回JSON：
-{
- "complete": true/false,
- "event": {
-   "title":"",
-   "date":"",
-   "time":"",
-   "duration":60,
-   "people":"",
-   "location":""
- },
- "reply":""
-}`,
+`返回JSON：
+{"complete":true,"events":[],"reply":""}`,
     currentTranscript);
 
-    const obj = JSON.parse(raw.replace(/```json|```/g,'').trim());
-    currentDraftEvent = obj.event;
+    const obj = JSON.parse(clean(raw));
+    currentDraftEvents = obj.events;
 
-    if (!obj.complete) {
+    if(obj.complete !== true){
       conversationMode = true;
-
-      document.getElementById('loadingBar').classList.remove('show');
+      loadingBar.classList.remove('show');
       speak(obj.reply);
       return;
     }
 
-    document.getElementById('loadingBar').classList.remove('show');
-    showAIResults([obj.event]);
+    loadingBar.classList.remove('show');
+    showAIResults(obj.events);
 
-  } catch(e) {
+  }catch(e){
     console.error(e);
-    document.getElementById('loadingBar').classList.remove('show');
-    showToast('AI 分析失败');
-  }
-}
-// ── Calendar ──
-async function loadCalendar() {
-  try {
-    const res = await fetch(
-      'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=50&orderBy=startTime&singleEvents=true',
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-
-    const data = await res.json();
-    localEvents = data.items || [];
-
-    renderCalendar();
-  } catch (e) {
-    console.error('Calendar load error:', e);
-    showToast('日历加载失败');
+    loadingBar.classList.remove('show');
   }
 }
 
-function renderCalendar() {
-  const container = document.getElementById('calendarEvents');
+// ===== AI结果 =====
+function showAIResults(events){
 
-  if (!localEvents.length) {
-    container.innerHTML = '<div class="empty-cal"><p>暂无日程</p></div>';
+  aiEvents.innerHTML = '';
+  window._pendingEvents = events;
+
+  events.forEach((ev,i)=>{
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div class="card">
+        <b>${ev.title}</b><br>
+        ${ev.date} ${ev.time}<br>
+        <button onclick="addVoiceEvent(this,${i})">加入</button>
+      </div>
+    `;
+    aiEvents.appendChild(el);
+  });
+
+  aiResult.classList.add('show');
+}
+
+// ===== 写入 =====
+async function addVoiceEvent(btn,idx){
+
+  const ev = window._pendingEvents[idx];
+
+  const [h,m] = ev.time.split(':');
+
+  const d = new Date(ev.date.replace(/年|月/g,'-').replace('日',''));
+
+  const start = new Date(d.getFullYear(),d.getMonth(),d.getDate(),h,m);
+
+  await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${accessToken}`,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      summary:ev.title,
+      start:{dateTime:start.toISOString(),timeZone:'Australia/Sydney'},
+      end:{dateTime:new Date(start.getTime()+3600000).toISOString(),timeZone:'Australia/Sydney'}
+    })
+  });
+
+  speak("已加入日历");
+}
+
+// ===== 查询空闲 =====
+async function handleAvailabilityQuery(){
+
+  const res = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+    { headers:{Authorization:`Bearer ${accessToken}`} }
+  );
+
+  const data = await res.json();
+
+  if(!data.items.length){
+    speak("你今天基本没安排");
     return;
   }
 
-  container.innerHTML = '';
-
-  localEvents.forEach(ev => {
-    const start = new Date(ev.start.dateTime || ev.start.date);
-
-    const el = document.createElement('div');
-    el.className = 'tl-event';
-
-    el.innerHTML = `
-      <div class="tl-t">
-        <div class="h">${start.getHours()}</div>
-        <div class="ap">${start.getMinutes()}</div>
-      </div>
-      <div class="tl-div"></div>
-      <div class="tl-info">
-        <h4>${ev.summary || '无标题'}</h4>
-        <p>${start.toLocaleDateString()}</p>
-      </div>
-    `;
-
-    container.appendChild(el);
-  });
+  speak("我帮你看了一下，有空档时间");
 }
 
-// ── 写入日历 ──
-async function addVoiceEvent(btn, idx) {
-  const ev = window._pendingEvents[idx];
-
-  const [h, m] = ev.time.split(':');
-
-  const d = new Date(ev.date.replace(/年|月/g, '-').replace('日', ''));
-
-  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
-
-  try {
-    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        summary: ev.title,
-        description: `${ev.people || ''} ${ev.location || ''}`,
-        start: {
-          dateTime: start.toISOString(),
-          timeZone: 'Australia/Sydney'
-        },
-        end: {
-          dateTime: new Date(start.getTime() + 3600000).toISOString(),
-          timeZone: 'Australia/Sydney'
-        }
-      })
-    });
-
-    btn.textContent = '✓ 已添加';
-    btn.classList.add('added');
-
-    speak('已加入日历');
-    loadCalendar();
-
-    conversationMode = false;
-    currentDraftEvent = null;
-
-  } catch (e) {
-    console.error(e);
-    showToast('添加失败');
-  }
-}
-
-// ── AI结果展示 ──
-function showAIResults(events) {
-  const container = document.getElementById('aiEvents');
-  container.innerHTML = '';
-
-  window._pendingEvents = events;
-
-  events.forEach((ev, i) => {
-    const el = document.createElement('div');
-    el.className = 'ai-event-card';
-
-    el.innerHTML = `
-      <div class="aec-bar"></div>
-      <div class="aec-info">
-        <div class="aec-title">${ev.title}</div>
-        <div class="aec-meta">${ev.date} ${ev.time} · ${ev.duration || 60}分钟</div>
-      </div>
-      <button class="aec-btn" onclick="addVoiceEvent(this, ${i})">+ 加入</button>
-    `;
-
-    container.appendChild(el);
-  });
-
-  document.getElementById('aiResult').classList.add('show');
-}
-
-// ── Gmail扫描 ──
-async function scanGmail() {
-  showToast('正在扫描邮件...');
-
-  try {
-    const res = await fetch(
-      'https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=5',
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-
-    const data = await res.json();
-    const container = document.getElementById('gmailResults');
-
-    if (!data.messages || !data.messages.length) {
-      container.innerHTML = '<div style="color:var(--muted2)">暂无邮件</div>';
-      return;
-    }
-
-    container.innerHTML = '';
-
-    for (let msg of data.messages) {
-      const mres = await fetch(
-        `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-
-      const mdata = await mres.json();
-
-      const subject = mdata.payload.headers.find(h => h.name === 'Subject')?.value || '无标题';
-
-      const el = document.createElement('div');
-      el.className = 'email-item';
-
-      el.innerHTML = `
-        <div class="ei-dot"></div>
-        <div class="ei-info">
-          <div class="ei-from">${subject}</div>
-          <div class="ei-subject">邮件内容分析中...</div>
-          <span class="ei-tag tag-cal">日程</span>
-        </div>
-        <button class="ei-add">+ 添加</button>
-      `;
-
-      container.appendChild(el);
-    }
-
-  } catch (e) {
-    console.error(e);
-    showToast('邮件扫描失败');
-  }
-}
-// ── Week UI ──
-let currentWeekOffset = 0;
-let selectedDate = new Date();
-
-function buildWeekStrip() {
-  const container = document.getElementById('weekStrip');
-  container.innerHTML = '';
-
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay() + currentWeekOffset * 7);
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-
-    const el = document.createElement('div');
-    el.className = 'week-day';
-
-    if (d.toDateString() === new Date().toDateString()) {
-      el.classList.add('today');
-    }
-
-    el.innerHTML = `
-      <div class="wd-name">${['日','一','二','三','四','五','六'][d.getDay()]}</div>
-      <div class="wd-num">${d.getDate()}</div>
-      <div class="wd-dot"></div>
-    `;
-
-    el.onclick = () => {
-      selectedDate = d;
-      renderCalendar();
-    };
-
-    container.appendChild(el);
-  }
-
-  document.getElementById('weekLabel').textContent =
-    start.toLocaleDateString();
-}
-
-function changeWeek(offset) {
-  currentWeekOffset += offset;
-  buildWeekStrip();
-}
-
-// ── Toast ──
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-
-  setTimeout(() => t.classList.remove('show'), 2000);
-}
-
-// ── Speak ──
-function speak(text) {
+// ===== 语音 =====
+function speak(text){
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'zh-CN';
+  u.lang='zh-CN';
   speechSynthesis.speak(u);
 }
 
-// ── Utility ──
-function parseDate(str) {
-  return new Date(str.replace(/年|月/g, '-').replace('日', ''));
-}
-
-// ── 页面加载 fallback（保险） ──
-setTimeout(() => {
-  if (!accessToken) {
-    document.getElementById('loadingMsg').textContent = '未检测到登录状态';
-  }
-}, 5000);
-
-// ── Debug（你以后可以删） ──
-console.log('APP FULL LOADED');
-
-// ── 防止未处理错误炸掉 ──
-window.onerror = function(msg, url, line) {
-  console.error('Global Error:', msg, url, line);
-  showToast('系统异常');
-};
-
-// ── 防止 Promise 崩溃 ──
-window.addEventListener('unhandledrejection', function(e) {
-  console.error('Unhandled Promise:', e.reason);
-});
-
-// ── END ──
 </script>
 
 </body>
