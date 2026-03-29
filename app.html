@@ -453,6 +453,14 @@ let mediaRecorder = null;
 let audioChunks = [];
 let srRecog = null;
 let srInterim = '';
+let micStream = null; // module-level ref so stream can always be released
+
+function releaseStream() {
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+}
 
 function initSpeech() {
   if (!navigator.mediaDevices || !window.MediaRecorder) {
@@ -465,13 +473,18 @@ async function toggleRec() {
   if (isRec) {
     srRecog && srRecog.abort();
     srRecog = null;
-    mediaRecorder && mediaRecorder.stop();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop(); // onstop will call releaseStream()
+    } else {
+      releaseStream(); // safety: release if mediaRecorder never started
+    }
     return;
   }
 
-  let stream;
+  releaseStream(); // release any previously leaked stream before acquiring new one
+
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
     document.getElementById('tbox').innerHTML = '<span style="color:var(--warn);font-size:12px">请在设置里允许麦克风：设置 → Safari → 麦克风 → 允许</span>';
     return;
@@ -510,7 +523,7 @@ async function toggleRec() {
   const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
   audioChunks = [];
-  mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+  mediaRecorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
 
   mediaRecorder.onstart = () => {
@@ -527,7 +540,7 @@ async function toggleRec() {
   };
 
   mediaRecorder.onstop = async () => {
-    stream.getTracks().forEach(t => t.stop());
+    releaseStream(); // always release mic, regardless of what follows
     stopRec();
 
     const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
@@ -993,19 +1006,32 @@ let emailAudioChunks = [];
 let emailSrRecog = null;
 let emailSrInterim = '';
 let emailIsRec = false;
+let emailMicStream = null; // module-level ref for reliable release
 let savedDrafts = [];
+
+function releaseEmailStream() {
+  if (emailMicStream) {
+    emailMicStream.getTracks().forEach(t => t.stop());
+    emailMicStream = null;
+  }
+}
 
 async function startEmailRec() {
   if (emailIsRec) {
     emailSrRecog && emailSrRecog.abort();
     emailSrRecog = null;
-    emailMediaRecorder && emailMediaRecorder.stop();
+    if (emailMediaRecorder && emailMediaRecorder.state !== 'inactive') {
+      emailMediaRecorder.stop(); // onstop will call releaseEmailStream()
+    } else {
+      releaseEmailStream();
+    }
     return;
   }
 
-  let stream;
+  releaseEmailStream(); // release any previously leaked stream
+
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    emailMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) { showToast('请允许麦克风权限'); return; }
 
   // ── 1. SpeechRecognition: realtime interim display ──
@@ -1042,7 +1068,7 @@ async function startEmailRec() {
 
   emailAudioChunks = [];
   emailSrInterim = '';
-  emailMediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+  emailMediaRecorder = new MediaRecorder(emailMicStream, mimeType ? { mimeType } : {});
   emailMediaRecorder.ondataavailable = e => { if (e.data.size > 0) emailAudioChunks.push(e.data); };
 
   emailMediaRecorder.onstart = () => {
@@ -1052,7 +1078,7 @@ async function startEmailRec() {
   };
 
   emailMediaRecorder.onstop = async () => {
-    stream.getTracks().forEach(t => t.stop());
+    releaseEmailStream(); // always release mic first
     emailIsRec = false;
     document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
 
