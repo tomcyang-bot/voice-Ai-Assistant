@@ -564,6 +564,9 @@ async function toggleRec() {
       document.getElementById('loadingBar').classList.remove('show');
       document.getElementById('vcStatus').textContent = '点击说话或直接输入';
     }
+
+    // Auto-process after voice input — restores voice conversation flow
+    if (transcript.trim()) process();
   };
 
   mediaRecorder.start();
@@ -811,6 +814,8 @@ function speak(txt) {
   const voices = window.speechSynthesis.getVoices();
   const zh = voices.find(v => v.lang.includes('zh'));
   if (zh) u.voice = zh;
+  // Auto-restart recording after AI finishes speaking — enables voice conversation loop
+  u.onend = () => { if (!isRec) toggleRec(); };
   window.speechSynthesis.speak(u);
 }
 
