@@ -448,12 +448,28 @@ async function callAI(system, userMsg) {
   }
 }
 
+// ── Transcript correction via Claude (does NOT touch chatHistory) ──
+async function correctTranscript(raw) {
+  const res = await fetch('/api/claude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system: '你是语音识别文字修正助手。将语音识别的原始文字修正为自然流畅的中文表达，保留原意，只修正错别字、断句和语序问题，不添加或删减内容。直接输出修正后的文字，不加任何解释或标点补充说明。',
+      messages: [{ role: 'user', content: raw }]
+    })
+  });
+  if (!res.ok) throw new Error('correction ' + res.status);
+  const d = await res.json();
+  return (d.text || '').trim() || raw;
+}
+
 // ── Voice (Dual-mode: SpeechRecognition realtime + Whisper correction) ──
 let mediaRecorder = null;
 let audioChunks = [];
 let srRecog = null;
 let srInterim = '';
 let micStream = null; // module-level ref so stream can always be released
+let recordingTimer = null; // auto-stop timer (max 12s)
 
 function releaseStream() {
   if (micStream) {
@@ -471,6 +487,8 @@ function initSpeech() {
 
 async function toggleRec() {
   if (isRec) {
+    clearTimeout(recordingTimer);
+    recordingTimer = null;
     srRecog && srRecog.abort();
     srRecog = null;
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -530,6 +548,12 @@ async function toggleRec() {
     isRec = true;
     document.getElementById('micBtn').classList.add('on');
     document.getElementById('waves').classList.add('on');
+    recordingTimer = setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        showToast('已达最长录音时长 (12s)');
+      }
+    }, 12000);
     document.getElementById('vcStatus').textContent = '🔴 正在聆听...';
     document.getElementById('recBtn').textContent = '⏹ 停止';
     document.getElementById('recBtn').classList.add('on');
@@ -560,7 +584,15 @@ async function toggleRec() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Whisper 失败');
 
-      transcript = data.text.trim();
+      const rawText = data.text.trim();
+      // ── Claude correction layer ──
+      document.getElementById('vcStatus').textContent = '✦ Claude 润色中...';
+      document.getElementById('loadingBarMsg').textContent = 'Claude AI 润色中...';
+      try {
+        transcript = await correctTranscript(rawText);
+      } catch(ce) {
+        transcript = rawText; // fall back to raw Whisper output
+      }
       document.getElementById('tbox').textContent = transcript;
       document.getElementById('aiBtn').disabled = !transcript;
     } catch(e) {
@@ -587,6 +619,8 @@ async function toggleRec() {
 
 function stopRec() {
   isRec = false;
+  clearTimeout(recordingTimer);
+  recordingTimer = null;
   document.getElementById('micBtn').classList.remove('on');
   document.getElementById('waves').classList.remove('on');
   document.getElementById('vcStatus').textContent = '点击说话或直接输入';
