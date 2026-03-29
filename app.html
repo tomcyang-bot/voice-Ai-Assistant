@@ -448,10 +448,12 @@ async function callAI(system, userMsg) {
   }
 }
 
-// ── Voice ──
+// ── Voice (Whisper) ──
+let mediaRecorder = null;
+let audioChunks = [];
+
 function initSpeech() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
     document.getElementById('recBtn').textContent = '⌨️ 请直接输入';
     document.getElementById('vcStatus').textContent = '请在框内直接打字';
   }
@@ -459,28 +461,29 @@ function initSpeech() {
 
 async function toggleRec() {
   if (isRec) {
-    recog && recog.abort();
-    recog = null;
-    stopRec();
+    // Stop recording → triggers onstop → sends to Whisper
+    mediaRecorder && mediaRecorder.stop();
     return;
   }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showToast('请直接在框内打字'); return; }
 
+  let stream;
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    s.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) {
     document.getElementById('tbox').innerHTML = '<span style="color:var(--warn);font-size:12px">请在设置里允许麦克风：设置 → Safari → 麦克风 → 允许</span>';
     return;
   }
 
-  recog = new SR();
-  recog.lang = 'zh-CN';
-  recog.continuous = false;
-  recog.interimResults = true;
+  // Pick best supported format
+  const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
-  recog.onstart = () => {
+  audioChunks = [];
+  mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+
+  mediaRecorder.onstart = () => {
     isRec = true;
     document.getElementById('micBtn').classList.add('on');
     document.getElementById('waves').classList.add('on');
@@ -492,25 +495,40 @@ async function toggleRec() {
     document.getElementById('aiBtn').disabled = true;
   };
 
-  recog.onresult = e => {
-    let txt = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
-    transcript = txt;
-    document.getElementById('tbox').textContent = txt;
-  };
-
-  recog.onend = () => {
+  mediaRecorder.onstop = async () => {
+    // Stop all mic tracks
+    stream.getTracks().forEach(t => t.stop());
     stopRec();
-    if (transcript.trim()) document.getElementById('aiBtn').disabled = false;
+
+    const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
+    if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
+
+    // Show transcribing state
+    document.getElementById('vcStatus').textContent = '⏳ Whisper 识别中...';
+    document.getElementById('loadingBar').classList.add('show');
+    document.getElementById('loadingBarMsg').textContent = 'Whisper 语音识别中...';
+
+    try {
+      const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Whisper 失败');
+
+      transcript = data.text.trim();
+      document.getElementById('tbox').textContent = transcript;
+      document.getElementById('aiBtn').disabled = !transcript;
+    } catch(e) {
+      showToast('识别失败: ' + e.message);
+    } finally {
+      document.getElementById('loadingBar').classList.remove('show');
+      document.getElementById('vcStatus').textContent = '点击说话或直接输入';
+    }
   };
 
-  recog.onerror = e => {
-    stopRec();
-    if (e.error === 'not-allowed') showToast('请允许麦克风权限');
-    else showToast('语音错误: ' + e.error);
-  };
-
-  try { recog.start(); } catch(e) { showToast('启动失败，请重试'); }
+  mediaRecorder.start();
 }
 
 function stopRec() {
@@ -926,54 +944,66 @@ function switchTab(tab) {
   }
 }
 
-// ── Email Voice & Compose ──
-let emailRecog = null;
+// ── Email Voice & Compose (Whisper) ──
+let emailMediaRecorder = null;
+let emailAudioChunks = [];
 let emailIsRec = false;
 let savedDrafts = [];
 
 async function startEmailRec() {
   if (emailIsRec) {
-    emailRecog && emailRecog.abort();
-    emailIsRec = false;
-    document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
+    emailMediaRecorder && emailMediaRecorder.stop();
     return;
   }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { showToast('请直接在邮件框内打字'); return; }
 
+  let stream;
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-    s.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) { showToast('请允许麦克风权限'); return; }
 
-  emailRecog = new SR();
-  emailRecog.lang = 'zh-CN';
-  emailRecog.continuous = false;
-  emailRecog.interimResults = true;
+  const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
-  emailRecog.onstart = () => {
+  emailAudioChunks = [];
+  emailMediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+
+  emailMediaRecorder.ondataavailable = e => { if (e.data.size > 0) emailAudioChunks.push(e.data); };
+
+  emailMediaRecorder.onstart = () => {
     emailIsRec = true;
     document.getElementById('emailRecBtn').textContent = '⏹ 停止';
-    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在听...</span>';
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在录音...</span>';
   };
 
-  emailRecog.onresult = e => {
-    let txt = '';
-    for (let i=e.resultIndex; i<e.results.length; i++) txt += e.results[i][0].transcript;
-    document.getElementById('emailDraft').textContent = txt;
-  };
-
-  emailRecog.onend = () => {
+  emailMediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
     emailIsRec = false;
     document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
-    const content = document.getElementById('emailDraft').innerText;
-    if (content && content.trim()) {
+
+    const blob = new Blob(emailAudioChunks, { type: mimeType || 'audio/webm' });
+    if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
+
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">⏳ Whisper 识别中...</span>';
+
+    try {
+      const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Whisper 失败');
+
+      document.getElementById('emailDraft').textContent = data.text.trim();
       document.getElementById('aiEmailBtn').disabled = false;
       showToast('录音完成，点击 AI 润色');
+    } catch(e) {
+      showToast('识别失败: ' + e.message);
+      document.getElementById('emailDraft').textContent = '';
     }
   };
 
-  try { emailRecog.start(); } catch(e) { showToast('启动失败，请重试'); }
+  emailMediaRecorder.start();
 }
 
 async function aiWriteEmail() {
