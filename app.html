@@ -448,9 +448,11 @@ async function callAI(system, userMsg) {
   }
 }
 
-// ── Voice (Whisper) ──
+// ── Voice (Dual-mode: SpeechRecognition realtime + Whisper correction) ──
 let mediaRecorder = null;
 let audioChunks = [];
+let srRecog = null;
+let srInterim = '';
 
 function initSpeech() {
   if (!navigator.mediaDevices || !window.MediaRecorder) {
@@ -461,7 +463,8 @@ function initSpeech() {
 
 async function toggleRec() {
   if (isRec) {
-    // Stop recording → triggers onstop → sends to Whisper
+    srRecog && srRecog.abort();
+    srRecog = null;
     mediaRecorder && mediaRecorder.stop();
     return;
   }
@@ -474,13 +477,40 @@ async function toggleRec() {
     return;
   }
 
-  // Pick best supported format
+  // ── 1. SpeechRecognition: realtime interim display ──
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) {
+    srRecog = new SR();
+    srRecog.lang = 'zh-CN';
+    srRecog.continuous = true;
+    srRecog.interimResults = true;
+    srRecog.onresult = e => {
+      let final = '', interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      srInterim = final + interim;
+      // Show realtime text with dim interim suffix
+      const tbox = document.getElementById('tbox');
+      tbox.innerHTML = '';
+      if (final) tbox.appendChild(document.createTextNode(final));
+      if (interim) {
+        const span = document.createElement('span');
+        span.style.cssText = 'color:var(--muted2);font-style:italic';
+        span.textContent = interim;
+        tbox.appendChild(span);
+      }
+    };
+    srRecog.onerror = () => {}; // silent — Whisper will cover it
+    try { srRecog.start(); } catch(e) {}
+  }
+
+  // ── 2. MediaRecorder: record full audio for Whisper ──
   const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-
   audioChunks = [];
   mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
 
   mediaRecorder.onstart = () => {
@@ -493,20 +523,20 @@ async function toggleRec() {
     document.getElementById('tbox').innerHTML = '';
     document.getElementById('aiReply').classList.remove('show');
     document.getElementById('aiBtn').disabled = true;
+    srInterim = '';
   };
 
   mediaRecorder.onstop = async () => {
-    // Stop all mic tracks
     stream.getTracks().forEach(t => t.stop());
     stopRec();
 
     const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
     if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
 
-    // Show transcribing state
-    document.getElementById('vcStatus').textContent = '⏳ Whisper 识别中...';
+    // Keep SR interim text visible while Whisper runs
+    document.getElementById('vcStatus').textContent = '✦ Whisper 修正中...';
     document.getElementById('loadingBar').classList.add('show');
-    document.getElementById('loadingBarMsg').textContent = 'Whisper 语音识别中...';
+    document.getElementById('loadingBarMsg').textContent = 'Whisper 修正识别中...';
 
     try {
       const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
@@ -521,7 +551,15 @@ async function toggleRec() {
       document.getElementById('tbox').textContent = transcript;
       document.getElementById('aiBtn').disabled = !transcript;
     } catch(e) {
-      showToast('识别失败: ' + e.message);
+      // Whisper failed — fall back to SR interim result
+      transcript = srInterim.trim();
+      if (transcript) {
+        document.getElementById('tbox').textContent = transcript;
+        document.getElementById('aiBtn').disabled = false;
+        showToast('Whisper 失败，使用实时识别结果');
+      } else {
+        showToast('识别失败: ' + e.message);
+      }
     } finally {
       document.getElementById('loadingBar').classList.remove('show');
       document.getElementById('vcStatus').textContent = '点击说话或直接输入';
@@ -944,14 +982,18 @@ function switchTab(tab) {
   }
 }
 
-// ── Email Voice & Compose (Whisper) ──
+// ── Email Voice & Compose (Dual-mode: SpeechRecognition realtime + Whisper correction) ──
 let emailMediaRecorder = null;
 let emailAudioChunks = [];
+let emailSrRecog = null;
+let emailSrInterim = '';
 let emailIsRec = false;
 let savedDrafts = [];
 
 async function startEmailRec() {
   if (emailIsRec) {
+    emailSrRecog && emailSrRecog.abort();
+    emailSrRecog = null;
     emailMediaRecorder && emailMediaRecorder.stop();
     return;
   }
@@ -961,18 +1003,47 @@ async function startEmailRec() {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch(e) { showToast('请允许麦克风权限'); return; }
 
+  // ── 1. SpeechRecognition: realtime interim display ──
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) {
+    emailSrRecog = new SR();
+    emailSrRecog.lang = 'zh-CN';
+    emailSrRecog.continuous = true;
+    emailSrRecog.interimResults = true;
+    emailSrRecog.onresult = e => {
+      let final = '', interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      emailSrInterim = final + interim;
+      const el = document.getElementById('emailDraft');
+      el.innerHTML = '';
+      if (final) el.appendChild(document.createTextNode(final));
+      if (interim) {
+        const span = document.createElement('span');
+        span.style.cssText = 'color:var(--muted2);font-style:italic';
+        span.textContent = interim;
+        el.appendChild(span);
+      }
+    };
+    emailSrRecog.onerror = () => {};
+    try { emailSrRecog.start(); } catch(e) {}
+  }
+
+  // ── 2. MediaRecorder: record full audio for Whisper ──
   const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
   emailAudioChunks = [];
+  emailSrInterim = '';
   emailMediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-
   emailMediaRecorder.ondataavailable = e => { if (e.data.size > 0) emailAudioChunks.push(e.data); };
 
   emailMediaRecorder.onstart = () => {
     emailIsRec = true;
     document.getElementById('emailRecBtn').textContent = '⏹ 停止';
-    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在录音...</span>';
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在聆听...</span>';
   };
 
   emailMediaRecorder.onstop = async () => {
@@ -983,7 +1054,7 @@ async function startEmailRec() {
     const blob = new Blob(emailAudioChunks, { type: mimeType || 'audio/webm' });
     if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
 
-    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">⏳ Whisper 识别中...</span>';
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">✦ Whisper 修正中...</span>';
 
     try {
       const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
@@ -998,8 +1069,15 @@ async function startEmailRec() {
       document.getElementById('aiEmailBtn').disabled = false;
       showToast('录音完成，点击 AI 润色');
     } catch(e) {
-      showToast('识别失败: ' + e.message);
-      document.getElementById('emailDraft').textContent = '';
+      // Fall back to SR result
+      if (emailSrInterim.trim()) {
+        document.getElementById('emailDraft').textContent = emailSrInterim.trim();
+        document.getElementById('aiEmailBtn').disabled = false;
+        showToast('Whisper 失败，使用实时识别结果');
+      } else {
+        showToast('识别失败: ' + e.message);
+        document.getElementById('emailDraft').textContent = '';
+      }
     }
   };
 
