@@ -239,7 +239,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
       <!-- Action buttons at TOP - always visible -->
       <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="sendEmail()" style="flex:2;padding:13px;background:var(--cyan);color:var(--bg);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">💾 保存到 Gmail 草稿</button>
+        <button onclick="openInGmail()" id="gmailBtn" style="flex:2;padding:13px;background:var(--cyan);color:var(--bg);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:none;">🔗 在 Gmail 中打开</button>
         <button onclick="clearEmail()" style="flex:1;padding:13px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:12px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">🗑 清除</button>
       </div>
       <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:340px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:8px;">
@@ -1142,7 +1142,8 @@ async function aiWriteEmail() {
     document.getElementById('emailDraft').textContent = data.text;
     document.getElementById('aiEmailBtn').textContent = '✦ 重新润色';
     document.getElementById('aiEmailBtn').disabled = false;
-    showToast('AI 邮件已生成，可以修改后发送');
+    document.getElementById('gmailBtn').style.display = '';
+    showToast('AI 邮件已生成，点击"在 Gmail 中打开"发送');
   } catch(e) {
     document.getElementById('aiEmailBtn').textContent = '✦ AI 润色';
     document.getElementById('aiEmailBtn').disabled = false;
@@ -1178,7 +1179,7 @@ function renderDrafts() {
       <div style="font-size:11px;color:#5a7090;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${d.body}</div>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button onclick="loadDraft(${i})" style="flex:1;padding:6px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">编辑</button>
-        <button onclick="sendDraft(${i})" style="flex:2;padding:6px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📤 发送</button>
+        <button onclick="openInGmailDraft(${i})" style="flex:2;padding:6px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🔗 在 Gmail 中打开</button>
         <button onclick="deleteDraft(${i})" style="flex:1;padding:6px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">删除</button>
       </div>`;
     c.appendChild(el);
@@ -1200,65 +1201,26 @@ function deleteDraft(i) {
   showToast('草稿已删除');
 }
 
-// Fix 2: Stable base64 encoding for Chinese/special characters
-function base64UrlEncode(str) {
-  return btoa(
-    new TextEncoder().encode(str)
-      .reduce((data, byte) => data + String.fromCharCode(byte), '')
-  ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function sendEmail() {
+function openInGmail() {
   const to = document.getElementById('emailTo').value.trim();
   const subject = document.getElementById('emailSubject').value.trim();
   const body = document.getElementById('emailDraft').innerText.trim();
 
-  if (!to) { showToast('请填写收件人邮箱'); return; }
   if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
 
-  // Fix 3: Standard RFC email format
-  const email = `To: ${to}\nSubject: ${subject||'(无主题)'}\nContent-Type: text/plain; charset=utf-8\n\n${body}`;
-  const encoded = base64UrlEncode(email);
+  const url = 'mailto:' + encodeURIComponent(to)
+    + '?subject=' + encodeURIComponent(subject || '(无主题)')
+    + '&body=' + encodeURIComponent(body);
 
-  try {
-    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: { raw: encoded } })
-    });
-
-    const resText = await res.text();
-    console.log('Gmail API status:', res.status, resText.slice(0,200));
-
-    if (res.ok) {
-      showToast('📩 已保存到 Gmail 草稿箱！');
-      speak('邮件草稿已保存');
-      clearEmail();
-    } else if (res.status === 401) {
-      showToast('权限不足，请重新登录');
-      localStorage.clear();
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-    } else if (res.status === 403) {
-      showToast('没有Gmail权限，请重新登录授权');
-      localStorage.clear();
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-    } else {
-      const err = JSON.parse(resText);
-      throw new Error(err.error?.message || '状态码: ' + res.status);
-    }
-  } catch(e) {
-    console.error('Gmail draft error:', e);
-    showToast('保存失败: ' + e.message);
-  }
+  window.open(url, '_blank');
 }
 
-async function sendDraft(i) {
+function openInGmailDraft(i) {
   const d = savedDrafts[i];
-  document.getElementById('emailTo').value = d.to;
-  document.getElementById('emailSubject').value = d.subject;
-  document.getElementById('emailDraft').textContent = d.body;
-  await sendEmail();
-  deleteDraft(i);
+  const url = 'mailto:' + encodeURIComponent(d.to || '')
+    + '?subject=' + encodeURIComponent(d.subject || '(无主题)')
+    + '&body=' + encodeURIComponent(d.body || '');
+  window.open(url, '_blank');
 }
 
 function clearEmail() {
@@ -1266,6 +1228,7 @@ function clearEmail() {
   document.getElementById('emailSubject').value = '';
   document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>';
   document.getElementById('aiEmailBtn').disabled = true;
+  document.getElementById('gmailBtn').style.display = 'none';
 }
 
 // ── Delete Event ──
