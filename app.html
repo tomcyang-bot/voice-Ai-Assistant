@@ -500,9 +500,8 @@ function initSpeech() {
   };
 
   recog.onend = () => {
-    // Only auto-restart if we're still in rec mode (user didn't stop)
     if (isRec) {
-      stopRec();
+      try { recog.start(); } catch(e) {}
     }
   };
 }
@@ -587,8 +586,8 @@ function speak(txt) {
   const zh = voices.find(v => v.lang.includes('zh'));
   if (zh) u.voice = zh;
   u.onend = () => {
-    if (!isRec) {
-      setTimeout(() => toggleRec(), 300);
+    if (isRec) {
+      try { recog.start(); } catch(e) {}
     }
   };
   window.speechSynthesis.speak(u);
@@ -678,7 +677,7 @@ async function process() {
 
   // ===== NEW REQUEST =====
   const isNewTask = ['新建','安排','创建','取消','删除','改到','改成','帮我','book','schedule','cancel','meeting'].some(w => txt.toLowerCase().includes(w));
-  if (isNewTask) { chatHistory = []; }
+  if (isNewTask && sessionState.mode === 'idle') { chatHistory = []; }
 
   document.getElementById('aiReply').classList.remove('show');
   document.getElementById('loadingBar').classList.add('show');
@@ -691,13 +690,13 @@ async function process() {
   }).join('
 ') || '暂无日程';
 
-  const system = `你是AI日历助理。日期：${dateCtxStr()}
+  consconst system = `你是AI日历助理。日期：${dateCtxStr()}
 本周日程：
 ${evList}
 
-只返回JSON：
-创建：{"action":"create","complete":true/false,"missing":"","reply":"","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}
-查询：{"action":"query","reply":"回答"}
+【重要】只返回JSON，不加任何说明文字，否则系统崩溃。
+创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，要有人情味，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}
+查询：{"action":"query","reply":"回答内容"}
 取消：{"action":"cancel","keyword":"关键词"}`;
 
   try {
