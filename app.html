@@ -375,9 +375,10 @@ async function checkTokenAndInit() {
 
   } catch(e) {
     console.error('Token invalid:', e.message);
-    localStorage.removeItem('gat');
-    // Fix 1: No delay, instant redirect
-    window.location.href = 'auth.html';
+    document.getElementById('loadingMsg').textContent = '登录验证失败，重新登录中...';
+    document.getElementById('loadingDebug').textContent = e.message;
+    localStorage.clear();
+    setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
   }
 }
 
