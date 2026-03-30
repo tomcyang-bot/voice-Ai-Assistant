@@ -223,7 +223,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div id="weekEvents"></div>
     </div>
 
-  </div>
 
   <!-- Email Compose -->
   <div class="email-wrap" id="emailWrap" style="display:none;padding:14px;">
@@ -250,8 +249,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div id="savedDrafts"></div>
   </div>
 
+  </div>
+
   <div class="bnav">
-    <div class="ni active">
+    <div class="ni active" onclick="switchTab('calendar')">
       <svg fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#00e5ff" stroke-width="1.8"/><line x1="3" y1="10" x2="21" y2="10" stroke="#00e5ff" stroke-width="1.8"/><line x1="8" y1="2" x2="8" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/><line x1="16" y1="2" x2="16" y2="6" stroke="#00e5ff" stroke-width="1.8" stroke-linecap="round"/></svg>
       <div class="ni-lbl" style="color:var(--cyan)">日历</div>
     </div>
@@ -463,6 +464,8 @@ function isReject(t) {
 }
 
 // ── Voice Init ──
+let lastSpeechTime = Date.now();
+
 function initSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -477,19 +480,13 @@ function initSpeech() {
   recog.lang = 'en-US'; // handles Chinese + English mixed
 
   recog.onresult = async (e) => {
+    lastSpeechTime = Date.now();
     const raw = e.results[0][0].transcript;
     document.getElementById('tbox').textContent = raw;
     document.getElementById('vcStatus').textContent = '✦ AI 理解中...';
 
-    // Claude correction layer
-    try {
-      const corrected = await correctTranscript(raw);
-      transcript = corrected;
-      document.getElementById('tbox').textContent = corrected;
-    } catch(err) {
-      transcript = raw;
-    }
-
+    transcript = raw;
+    document.getElementById('tbox').textContent = raw;
     document.getElementById('aiBtn').disabled = false;
     process();
   };
@@ -502,7 +499,12 @@ function initSpeech() {
 
   recog.onend = () => {
     if (isRec) {
-      try { recog.start(); } catch(e) {}
+      const silent = Date.now() - lastSpeechTime > 3000;
+      if (silent) {
+        stopRec(); // auto stop after 3s silence - releases mic
+      } else {
+        try { recog.start(); } catch(e) {}
+      }
     }
   };
 }
@@ -690,7 +692,7 @@ async function process() {
     return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
   }).join('\n') || '暂无日程';
 
-  const system = '你是AI日历助理。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
+  const system = '你是AI日历助理，用户语音可能有错误，请自动理解真实意思。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
 
   try {
     const raw = await callAI(system, txt);
@@ -997,6 +999,9 @@ async function startEmailRec() {
   };
 
   emailRecog.onend = () => {
+    if (emailIsRec) {
+      try { emailRecog.start(); return; } catch(e) {}
+    }
     emailIsRec = false;
     document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
     const content = document.getElementById('emailDraft').innerText;
