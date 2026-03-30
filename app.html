@@ -688,17 +688,9 @@ async function process() {
   const evList = weekEvents.map(e => {
     const dt = e.start.dateTime ? new Date(e.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : e.start.date;
     return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
-  }).join('
-') || '暂无日程';
+  }).join('\n') || '暂无日程';
 
-  const system = `你是AI日历助理。日期：${dateCtxStr()}
-本周日程：
-${evList}
-
-【重要】只返回JSON，不加任何说明文字，否则系统崩溃。
-创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，要有人情味，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}
-查询：{"action":"query","reply":"回答内容"}
-取消：{"action":"cancel","keyword":"关键词"}`;
+  const system = '你是AI日历助理。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
 
   try {
     const raw = await callAI(system, txt);
