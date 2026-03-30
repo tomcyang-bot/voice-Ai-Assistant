@@ -1,148 +1,204 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>隐私政策 — Simply Project AI</title>
+<title>Privacy Policy — Simply Project AI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#07090f;--cyan:#00e5ff;--surface:#0e1220;--border:rgba(0,229,255,0.1);--text:#d0ddf0;--muted2:#607090;--white:#edf4ff;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:0 0 60px;}
-body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
-
+body{background:var(--bg);color:var(--text);font-family:"DM Sans",sans-serif;min-height:100vh;padding:0 0 60px;}
+body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
 .header{padding:20px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,9,15,0.9);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;}
 .logo{display:flex;align-items:center;gap:10px;}
 .logo-box{width:30px;height:30px;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));background:rgba(0,229,255,0.06);}
 .logo-box span{font-size:9px;color:var(--cyan);font-weight:700;}
-.logo-text{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:800;color:var(--white);}
+.logo-text{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:800;color:var(--white);}
 .logo-text em{color:var(--cyan);font-style:normal;}
 .back-btn{font-size:12px;color:var(--cyan);cursor:pointer;text-decoration:none;}
-
 .content{max-width:680px;margin:0 auto;padding:40px 24px;}
-
-.hero{margin-bottom:40px;}
-.hero h1{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:800;color:var(--white);margin-bottom:8px;letter-spacing:-.5px;}
-.hero p{font-size:13px;color:var(--muted2);line-height:1.7;}
-.updated{display:inline-block;font-size:11px;color:var(--cyan);background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);border-radius:20px;padding:4px 12px;margin-top:10px;}
-
-.section{margin-bottom:32px;}
-.section h2{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:var(--white);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
-.section h2::before{content:'';width:3px;height:16px;background:var(--cyan);border-radius:2px;flex-shrink:0;}
-.section p{font-size:13px;color:var(--muted2);line-height:1.8;margin-bottom:10px;}
-.section ul{list-style:none;padding:0;}
-.section ul li{font-size:13px;color:var(--muted2);line-height:1.8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:flex-start;gap:8px;}
-.section ul li::before{content:'→';color:var(--cyan);font-size:11px;flex-shrink:0;margin-top:3px;}
-.section ul li:last-child{border-bottom:none;}
-
-.highlight{background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 20px;margin:16px 0;}
+.hero{margin-bottom:36px;}
+.hero h1{font-family:"Space Grotesk",sans-serif;font-size:26px;font-weight:800;color:var(--white);margin-bottom:6px;}
+.hero .sub{font-size:12px;color:var(--muted2);margin-bottom:10px;}
+.updated{display:inline-block;font-size:11px;color:var(--cyan);background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);border-radius:20px;padding:4px 12px;}
+.highlight{background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.12);border-radius:12px;padding:16px 20px;margin:20px 0;}
 .highlight p{margin:0;font-size:13px;color:var(--text);line-height:1.7;}
 .highlight strong{color:var(--cyan);}
-
-.contact-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-top:32px;display:flex;align-items:center;gap:16px;}
-.contact-icon{font-size:28px;flex-shrink:0;}
-.contact-info h3{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:4px;}
-.contact-info p{font-size:12px;color:var(--muted2);}
-.contact-info a{color:var(--cyan);text-decoration:none;}
-
-.divider{height:1px;background:var(--border);margin:28px 0;}
+.section{margin-bottom:28px;}
+.section h2{font-family:"Space Grotesk",sans-serif;font-size:15px;font-weight:700;color:var(--white);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.section h2::before{content:"";width:3px;height:15px;background:var(--cyan);border-radius:2px;flex-shrink:0;}
+.section p{font-size:13px;color:var(--muted2);line-height:1.8;margin-bottom:8px;}
+.section ul{list-style:none;padding:0;}
+.section ul li{font-size:13px;color:var(--muted2);line-height:1.8;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:flex-start;gap:8px;}
+.section ul li::before{content:"→";color:var(--cyan);font-size:11px;flex-shrink:0;margin-top:3px;}
+.section ul li:last-child{border-bottom:none;}
+.section ul li strong{color:var(--text);}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;margin-left:6px;background:rgba(0,255,204,0.1);color:#00ffcc;border:1px solid rgba(0,255,204,0.2);}
+.divider{height:1px;background:var(--border);margin:24px 0;}
+.lang-toggle{display:flex;gap:8px;margin-bottom:32px;}
+.lang-btn{padding:6px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:"DM Sans",sans-serif;border:1px solid var(--border);background:transparent;color:var(--muted2);transition:all .2s;}
+.lang-btn.active{background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan);}
+.contact-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-top:28px;}
+.contact-box h3{font-family:"Space Grotesk",sans-serif;font-size:14px;font-weight:700;color:var(--white);margin-bottom:6px;}
+.contact-box p{font-size:12px;color:var(--muted2);}
+.contact-box a{color:var(--cyan);text-decoration:none;}
+[lang-section]{display:none;}
+[lang-section].active{display:block;}
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="logo">
-    <div class="logo-box"><span>AI</span></div>
-    <div class="logo-text">Cal<em>Voice</em></div>
+    <div class="logo-box"><span>SP</span></div>
+    <div class="logo-text">Simply Project <em>AI</em></div>
   </div>
-  <a href="auth.html" class="back-btn">← 返回</a>
+  <a href="auth.html" class="back-btn">← Back</a>
 </div>
 
 <div class="content">
-
   <div class="hero">
-    <h1>隐私政策</h1>
-    <p>我们非常重视您的隐私。本政策说明我们如何收集、使用和保护您的个人信息。</p>
-    <div class="updated">最后更新：2026年3月28日</div>
+    <h1>Privacy Policy</h1>
+    <div class="sub">Provided by Future One Consulting</div>
+    <div class="updated">Last Updated: March 30, 2026</div>
   </div>
 
-  <div class="highlight">
-    <p><strong>核心承诺：</strong>您的数据存储在您自己的 Google 账号中，我们无法访问您的邮件原文和日历详情。我们只在您主动操作时临时处理必要的信息。</p>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('en')">English</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
   </div>
 
-  <div class="divider"></div>
+  <!-- ENGLISH -->
+  <div id="en-section">
+    <div class="highlight">
+      <p><strong>Our commitment:</strong> Simply Project AI is built with a "Privacy by Design" approach. We only request the minimum permissions needed to provide our service, and we never sell your data.</p>
+    </div>
 
-  <div class="section">
-    <h2>我们收集的信息</h2>
-    <p>使用 CalVoice AI 时，我们会访问以下信息：</p>
-    <ul>
-      <li>您的 Google 账号基本信息（姓名、邮箱地址、头像），用于显示登录状态</li>
-      <li>您的 Google Calendar 事件，用于显示和创建日程</li>
-      <li>您的 Gmail 邮件元数据（发件人、主题），用于识别会议邀请</li>
-      <li>您通过语音或文字输入的日程内容，用于 AI 分析和创建事件</li>
-    </ul>
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>1. Introduction</h2>
+      <p>Simply Project AI (provided by Future One Consulting) is a productivity tool designed for the Australian building and consultancy industry. We value your privacy and apply a "Privacy by Design" approach to all our features.</p>
+    </div>
+
+    <div class="section">
+      <h2>2. Information We Collect and Use</h2>
+      <ul>
+        <li><strong>Google Calendar Data</strong><span class="badge">calendar.events only</span><br>We request access solely to create, edit, or view calendar events based on your voice or text commands. We do not store your full calendar history on our servers.</li>
+        <li><strong>Email Data (Mailto)</strong><span class="badge">Zero Gmail API</span><br>We do NOT request access to read or send your emails via the Gmail API. All email drafts are generated locally on your device using <code style="color:var(--cyan);font-size:11px;">mailto:</code> links — your email content never leaves your own mail client.</li>
+        <li><strong>Voice Data</strong><br>Voice inputs are processed in real-time to extract intent. We do not store, sell, or use your voice data for advertising purposes.</li>
+        <li><strong>Authentication Tokens</strong><br>Google OAuth tokens are stored locally in your browser's localStorage and are never sent to our servers. They are cleared on logout.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>3. Data Storage and Security</h2>
+      <ul>
+        <li><strong>Minimal storage:</strong> We do not store your calendar events, email content, or voice recordings on our servers.</li>
+        <li><strong>Encrypted infrastructure:</strong> Any essential metadata is stored on encrypted, secure servers.</li>
+        <li><strong>No third-party sharing:</strong> We do not share your personal or project data with any third parties, except as required to provide the service (e.g., Google API, Anthropic Claude API, OpenAI Whisper API).</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>4. Third-Party Services</h2>
+      <ul>
+        <li><strong>Google APIs</strong> — OAuth, Calendar. Governed by Google's Privacy Policy.</li>
+        <li><strong>Anthropic Claude API</strong> — AI intent processing. Not used for model training. Governed by Anthropic's Privacy Policy.</li>
+        <li><strong>OpenAI Whisper API</strong> — Voice transcription. Not stored long-term. Governed by OpenAI's Privacy Policy.</li>
+        <li><strong>Vercel</strong> — Hosting infrastructure. Governed by Vercel's Privacy Policy.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>5. Your Rights</h2>
+      <ul>
+        <li>You can revoke our access to your Google account at any time via your <strong>Google Security Settings</strong>.</li>
+        <li>Once access is revoked, we can no longer access any of your data.</li>
+        <li>We do not retain user data after access is revoked.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>6. Policy Updates</h2>
+      <p>We may update this Privacy Policy from time to time. Significant changes will be communicated within the application. Continued use constitutes acceptance of the updated policy.</p>
+    </div>
   </div>
 
-  <div class="section">
-    <h2>我们如何使用您的信息</h2>
-    <ul>
-      <li>分析您的语音/文字输入，提取日程信息</li>
-      <li>在您的 Google Calendar 中创建事件</li>
-      <li>扫描邮件主题，识别含会议信息的邮件</li>
-      <li>生成邮件草稿（需要您确认后才发送）</li>
-      <li>回答您关于日程安排的问题</li>
-    </ul>
-  </div>
+  <!-- CHINESE -->
+  <div id="zh-section" style="display:none;">
+    <div class="highlight">
+      <p><strong>我们的承诺：</strong>Simply Project AI 采用"隐私原生"设计理念。我们只申请提供服务所必需的最低权限，绝不出售您的数据。</p>
+    </div>
 
-  <div class="section">
-    <h2>我们不会做的事</h2>
-    <ul>
-      <li>不会永久存储您的邮件内容或日历详情</li>
-      <li>不会将您的数据出售或分享给第三方</li>
-      <li>不会在未经您确认的情况下发送任何邮件</li>
-      <li>不会读取与日程无关的邮件内容</li>
-      <li>不会在您退出后保留任何个人数据</li>
-    </ul>
-  </div>
+    <div class="divider"></div>
 
-  <div class="section">
-    <h2>数据存储与安全</h2>
-    <p>您的日历和邮件数据始终存储在您自己的 Google 账号中，我们通过 Google 官方 OAuth 2.0 授权访问，您可以随时在 Google 账号设置中撤销授权。</p>
-    <p>AI 分析过程中，您的输入内容会通过加密连接发送到 Anthropic Claude API 进行处理，处理完成后不会被永久保留。</p>
-  </div>
+    <div class="section">
+      <h2>1. 简介</h2>
+      <p>Simply Project AI（由 Future One Consulting 提供）是专为澳洲建筑及咨询行业设计的生产力工具。我们极其重视您的隐私，并对所有功能采用"隐私原生"设计。</p>
+    </div>
 
-  <div class="section">
-    <h2>第三方服务</h2>
-    <p>本应用使用以下第三方服务：</p>
-    <ul>
-      <li><strong style="color:var(--white)">Google OAuth / Gmail API / Calendar API</strong> — 用于账号登录和日程管理，受 Google 隐私政策约束</li>
-      <li><strong style="color:var(--white)">Anthropic Claude API</strong> — 用于 AI 分析，受 Anthropic 隐私政策约束</li>
-      <li><strong style="color:var(--white)">Vercel</strong> — 用于应用托管，受 Vercel 隐私政策约束</li>
-    </ul>
-  </div>
+    <div class="section">
+      <h2>2. 我们收集和使用信息的方式</h2>
+      <ul>
+        <li><strong>Google 日历数据</strong><span class="badge">仅 calendar.events</span><br>我们申请此权限，仅用于根据您的语音或文字指令创建、编辑或查看日历行程。我们不会在服务器上存储您的完整日历历史。</li>
+        <li><strong>邮件数据 (Mailto)</strong><span class="badge">零 Gmail API</span><br>我们不会申请读取或发送您 Gmail 邮件的权限。所有邮件草稿均通过 <code style="color:var(--cyan);font-size:11px;">mailto:</code> 链接在您的本地设备上生成，您的邮件内容始终保留在您自己的邮件客户端中。</li>
+        <li><strong>语音数据</strong><br>语音输入仅用于实时解析意图。我们不会存储、出售或将您的语音数据用于广告目的。</li>
+        <li><strong>身份验证令牌</strong><br>Google OAuth 令牌仅存储在您浏览器的本地存储中，不会发送至我们的服务器，退出登录时自动清除。</li>
+      </ul>
+    </div>
 
-  <div class="section">
-    <h2>您的权利</h2>
-    <ul>
-      <li>随时在 Google 账号设置中撤销本应用的访问权限</li>
-      <li>要求删除与您账号相关的任何数据</li>
-      <li>联系我们了解我们如何处理您的数据</li>
-    </ul>
-  </div>
+    <div class="section">
+      <h2>3. 数据存储与安全</h2>
+      <ul>
+        <li><strong>最小化存储：</strong>我们不会在服务器上存储您的日历行程、邮件内容或语音录音。</li>
+        <li><strong>加密基础设施：</strong>必要的身份验证信息均存储在加密的安全服务器上。</li>
+        <li><strong>严禁第三方共享：</strong>除提供服务所必需（如 Google API、Anthropic Claude API、OpenAI Whisper API）外，我们不会将您的个人或项目数据共享给任何第三方。</li>
+      </ul>
+    </div>
 
-  <div class="section">
-    <h2>Cookie 和本地存储</h2>
-    <p>我们仅使用浏览器本地存储（localStorage）保存您的登录 Token，用于维持登录状态。退出登录后该 Token 会被立即清除。我们不使用任何追踪 Cookie。</p>
-  </div>
+    <div class="section">
+      <h2>4. 第三方服务</h2>
+      <ul>
+        <li><strong>Google APIs</strong> — OAuth 授权、日历。受 Google 隐私政策约束。</li>
+        <li><strong>Anthropic Claude API</strong> — AI 意图处理，不用于模型训练。受 Anthropic 隐私政策约束。</li>
+        <li><strong>OpenAI Whisper API</strong> — 语音转文字，不长期存储。受 OpenAI 隐私政策约束。</li>
+        <li><strong>Vercel</strong> — 托管基础设施。受 Vercel 隐私政策约束。</li>
+      </ul>
+    </div>
 
-  <div class="section">
-    <h2>政策更新</h2>
-    <p>我们可能会不定期更新本隐私政策。重大变更时会在应用内通知您。继续使用本应用即表示您接受更新后的政策。</p>
+    <div class="section">
+      <h2>5. 您的权利</h2>
+      <ul>
+        <li>您可随时通过 <strong>Google 安全设置</strong>撤销我们对您 Google 账号的访问权限。</li>
+        <li>一旦撤销授权，我们将无法再访问您的任何数据。</li>
+        <li>撤销授权后，我们不保留任何用户数据。</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>6. 政策更新</h2>
+      <p>我们可能会不定期更新本隐私政策。重大变更将在应用程序内通知。继续使用即表示接受更新后的政策。</p>
+    </div>
   </div>
 
   <div class="contact-box">
-    <div class="contact-icon">📩</div>
-    <div class="contact-info">
-      <h3>有问题？联系我们</h3>
-      <p>隐私相关问题请联系：<a href="/cdn-cgi/l/email-protection#e881868e87a88e9d9c9d9a8d87868dc6899d"><span class="__cf_email__" data-cfemail="d1b8bfb7be91b7a4a5a4a3b4bebfb4ffb0a4">[email&#160;protected]</span></a><br>
+    <h3>Questions? Contact Us</h3>
+    <p>For privacy-related enquiries: <a href="mailto:tom@simplyproject.com.au">tom@simplyproject.com.au</a><br>
+    Website: <a href="https://simplyproject.com.au">simplyproject.com.au</a><br>
+    Provided by: Future One Consulting</p>
+  </div>
+</div>
+
+<script>
+function setLang(lang) {
+  document.getElementById('en-section').style.display = lang === 'en' ? 'block' : 'none';
+  document.getElementById('zh-section').style.display = lang === 'zh' ? 'block' : 'none';
+  document.querySelectorAll('.lang-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && lang === 'en') || (i === 1 && lang === 'zh'));
+  });
+}
+</script>
+</body>
+</html>
