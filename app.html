@@ -829,7 +829,7 @@ async function process() {
     return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
   }).join('\n') || '暂无日程';
 
-  co(function() {
+  const system = (function() {
     const lang = detectLang(txt);
     if (lang === 'zh') {
       return '你是AI日历助理，用户语音识别可能有错误（错别字、中英混合），请自动纠正并理解真实意思再做判断。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答"}\n取消：{"action":"cancel","keyword":"关键词"}';
