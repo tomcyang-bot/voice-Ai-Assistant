@@ -592,6 +592,7 @@ function applyUI() {
 }
 
 let lastSpeechTime = Date.now();
+let micStream = null; // track mic stream to release iOS indicator
 
 function initSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -662,15 +663,28 @@ function toggleRec() {
   document.getElementById('aiReply').classList.remove('show');
   document.getElementById('aiBtn').disabled = true;
 
-  try { recog.start(); } catch(e) { showToast('启动失败，请重试'); stopRec(); }
+  // Request mic explicitly so we can release it properly
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    try { recog.start(); } catch(e) { showToast('启动失败，请重试'); stopRec(); }
+  }).catch(() => {
+    showToast(uiLang === 'zh' ? '请允许麦克风权限' : 'Please allow microphone access');
+    stopRec();
+  });
 }
 
 function stopRec() {
   isRec = false;
+  // Release mic stream - removes iOS mic indicator
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  if (recog) { try { recog.abort(); } catch(e) {} }
   document.getElementById('micBtn').classList.remove('on');
   document.getElementById('waves').classList.remove('on');
-  document.getElementById('vcStatus').textContent = '点击说话或直接输入';
-  document.getElementById('recBtn').textContent = '🎙 开始录音';
+  document.getElementById('vcStatus').textContent = uiLang === 'zh' ? '点击说话或直接输入' : 'Tap to speak or type';
+  document.getElementById('recBtn').textContent = uiLang === 'zh' ? '🎙 开始录音' : '🎙 Start Recording';
   document.getElementById('recBtn').classList.remove('on');
 }
 
