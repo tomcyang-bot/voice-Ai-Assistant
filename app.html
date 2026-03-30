@@ -602,9 +602,9 @@ function initSpeech() {
   }
 
   recog = new SR();
-  recog.continuous = true;
+  recog.continuous = false;
   recog.interimResults = true;
-  recog.lang = 'zh-CN'; // will auto-switch based on speech
+  recog.lang = 'zh-CN'; // fixed - switching mid-session breaks recognition
 
   recog.onresult = async (e) => {
     lastSpeechTime = Date.now();
@@ -613,17 +613,13 @@ function initSpeech() {
       if (e.results[i].isFinal) final += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
-    if (interim) document.getElementById('tbox').textContent = interim;
-    if (!final) return;
-    const raw = final;
-    // Auto-switch recognition language based on what was said
-    const detectedLang = detectLang(raw);
-    recog.lang = detectedLang === 'zh' ? 'zh-CN' : 'en-US';
-    document.getElementById('tbox').textContent = raw;
-    document.getElementById('vcStatus').textContent = detectedLang === 'zh' ? '✦ AI 理解中...' : '✦ Analysing...';
-
-    transcript = raw;
-    document.getElementById('tbox').textContent = raw;
+    // Show text realtime
+    document.getElementById('tbox').textContent = final || interim;
+    // Store whatever we have for onend to process
+    if (final) {
+      transcript = final;
+      document.getElementById('vcStatus').textContent = uiLang === 'zh' ? '✦ AI 理解中...' : '✦ Analysing...';
+    }
     document.getElementById('aiBtn').disabled = false;
     process();
   };
@@ -636,11 +632,11 @@ function initSpeech() {
 
   recog.onend = () => {
     if (isRec) {
-      const silent = Date.now() - lastSpeechTime > 3000;
-      if (silent) {
-        stopRec(); // auto stop after 3s silence - releases mic
-      } else {
-        try { recog.start(); } catch(e) {}
+      stopRec();
+      // Process whatever we got
+      if (transcript.trim()) {
+        document.getElementById('aiBtn').disabled = false;
+        process();
       }
     }
   };
