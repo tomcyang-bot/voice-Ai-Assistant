@@ -276,9 +276,6 @@ const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleuser
 
 // ── State ──
 let token = null;
-let isRec = false;
-let recog = null;
-let transcript = '';
 let chatHistory = [];
 let weekOffset = 0;
 let selectedDate = new Date();
@@ -439,18 +436,19 @@ async function callAI(system, userMsg) {
   }
 }
 
-// ── State ──
+// ── Voice State ──
+let recog = null;
+let isRec = false;
+let transcript = '';
+
+// ── Session State ──
 let sessionState = {
-  mode: 'idle', // idle / collecting / confirm_cancel
+  mode: 'idle',
   intent: null,
   memory: {},
   pendingCancelEvent: null,
   pendingCancelCandidates: null,
 };
-
-let recog = null;
-let isRec = false;
-let transcript = '';
 
 // ── Confirmation helpers ──
 function isConfirm(t) {
