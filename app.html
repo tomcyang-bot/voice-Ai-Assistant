@@ -775,6 +775,40 @@ async function process() {
   }
 }
 
+async function addEv(btn, ev) {
+  btn.textContent = '添加中...';
+  btn.disabled = true;
+  try {
+    const [h,m] = ev.time.split(':').map(Number);
+    const base = ev.resolvedDate ? new Date(ev.resolvedDate) : new Date();
+    const start = new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m);
+    const end = new Date(start.getTime() + (ev.duration||60)*60000);
+
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        summary: ev.title,
+        description: ev.people ? '参与人: '+ev.people : '',
+        location: ev.location || '',
+        start: { dateTime: start.toISOString(), timeZone: 'Australia/Sydney' },
+        end: { dateTime: end.toISOString(), timeZone: 'Australia/Sydney' }
+      })
+    });
+
+    if (!res.ok) throw new Error('Calendar API ' + res.status);
+    btn.textContent = '✓ 已加入';
+    btn.classList.add('done');
+    showToast('✓ "' + ev.title + '" 已加入日历');
+    sessionState.mode = 'idle';
+    await loadCal();
+  } catch(e) {
+    btn.textContent = '+ 加入';
+    btn.disabled = false;
+    showToast('添加失败: ' + e.message);
+  }
+}
+
 function showEventCard(ev) {
   const btnId = 'addBtn_' + Date.now();
   document.getElementById('aiEventCard').innerHTML = `
