@@ -226,7 +226,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   </div>
 
   <!-- Email Compose -->
-  <div class="email-wrap" id="emailWrap" style="display:none;padding:14px;">
+  <div class="email-wrap" id="emailWrap" style="display:none;padding:14px;padding-top:0;">
     <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted2);margin-bottom:10px;">✉️ 语音写邮件</div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:8px;">
       <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -239,10 +239,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       </div>
       <!-- Action buttons at TOP - always visible -->
       <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <button onclick="openInGmail()" id="gmailBtn" style="flex:2;padding:13px;background:var(--cyan);color:var(--bg);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:none;">🔗 在 Gmail 中打开</button>
+        <button onclick="sendEmail()" style="flex:2;padding:13px;background:var(--cyan);color:var(--bg);border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">💾 保存到 Gmail 草稿</button>
         <button onclick="clearEmail()" style="flex:1;padding:13px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:12px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">🗑 清除</button>
       </div>
-      <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:340px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:8px;">
+      <div id="emailDraft" contenteditable="true" style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:120px;font-size:12px;color:var(--text);line-height:1.7;outline:none;margin-bottom:8px;">
         <span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>
       </div>
     </div>
@@ -448,38 +448,10 @@ async function callAI(system, userMsg) {
   }
 }
 
-// ── Transcript correction via Claude (does NOT touch chatHistory) ──
-async function correctTranscript(raw) {
-  const res = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system: '你是语音识别文字修正助手。将语音识别的原始文字修正为自然流畅的中文表达，保留原意，只修正错别字、断句和语序问题，不添加或删减内容。直接输出修正后的文字，不加任何解释或标点补充说明。',
-      messages: [{ role: 'user', content: raw }]
-    })
-  });
-  if (!res.ok) throw new Error('correction ' + res.status);
-  const d = await res.json();
-  return (d.text || '').trim() || raw;
-}
-
-// ── Voice (Dual-mode: SpeechRecognition realtime + Whisper correction) ──
-let mediaRecorder = null;
-let audioChunks = [];
-let srRecog = null;
-let srInterim = '';
-let micStream = null; // module-level ref so stream can always be released
-let recordingTimer = null; // auto-stop timer (max 12s)
-
-function releaseStream() {
-  if (micStream) {
-    micStream.getTracks().forEach(t => t.stop());
-    micStream = null;
-  }
-}
-
+// ── Voice ──
 function initSpeech() {
-  if (!navigator.mediaDevices || !window.MediaRecorder) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
     document.getElementById('recBtn').textContent = '⌨️ 请直接输入';
     document.getElementById('vcStatus').textContent = '请在框内直接打字';
   }
@@ -487,140 +459,77 @@ function initSpeech() {
 
 async function toggleRec() {
   if (isRec) {
-    clearTimeout(recordingTimer);
-    recordingTimer = null;
-    srRecog && srRecog.abort();
-    srRecog = null;
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop(); // onstop will call releaseStream()
-    } else {
-      releaseStream(); // safety: release if mediaRecorder never started
-    }
+    recog && recog.abort();
+    recog = null;
+    stopRec();
     return;
   }
-
-  releaseStream(); // release any previously leaked stream before acquiring new one
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('请直接在框内打字'); return; }
 
   try {
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(t => t.stop());
   } catch(e) {
     document.getElementById('tbox').innerHTML = '<span style="color:var(--warn);font-size:12px">请在设置里允许麦克风：设置 → Safari → 麦克风 → 允许</span>';
     return;
   }
 
-  // ── 1. SpeechRecognition: realtime interim display ──
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SR) {
-    srRecog = new SR();
-    srRecog.lang = 'zh-CN';
-    srRecog.continuous = true;
-    srRecog.interimResults = true;
-    srRecog.onresult = e => {
-      let final = '', interim = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      srInterim = final + interim;
-      // Show realtime text with dim interim suffix
-      const tbox = document.getElementById('tbox');
-      tbox.innerHTML = '';
-      if (final) tbox.appendChild(document.createTextNode(final));
-      if (interim) {
-        const span = document.createElement('span');
-        span.style.cssText = 'color:var(--muted2);font-style:italic';
-        span.textContent = interim;
-        tbox.appendChild(span);
-      }
-    };
-    srRecog.onerror = () => {}; // silent — Whisper will cover it
-    try { srRecog.start(); } catch(e) {}
-  }
+  recog = new SR();
+  recog.lang = 'en-US';
+  recog.continuous = false;
+  recog.interimResults = true;
 
-  // ── 2. MediaRecorder: record full audio for Whisper ──
-  const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-  audioChunks = [];
-  mediaRecorder = new MediaRecorder(micStream, mimeType ? { mimeType } : {});
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-
-  mediaRecorder.onstart = () => {
+  recog.onstart = () => {
     isRec = true;
     document.getElementById('micBtn').classList.add('on');
     document.getElementById('waves').classList.add('on');
-    recordingTimer = setTimeout(() => {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        showToast('已达最长录音时长 (12s)');
-      }
-    }, 12000);
     document.getElementById('vcStatus').textContent = '🔴 正在聆听...';
     document.getElementById('recBtn').textContent = '⏹ 停止';
     document.getElementById('recBtn').classList.add('on');
     document.getElementById('tbox').innerHTML = '';
     document.getElementById('aiReply').classList.remove('show');
     document.getElementById('aiBtn').disabled = true;
-    srInterim = '';
   };
 
-  mediaRecorder.onstop = async () => {
-    releaseStream(); // always release mic, regardless of what follows
-    stopRec();
+  recog.onresult = e => {
+    let txt = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+    transcript = txt;
+    document.getElementById('tbox').textContent = txt;
+  };
 
-    const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-    if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
-
-    // Keep SR interim text visible while Whisper runs
-    document.getElementById('vcStatus').textContent = '✦ Whisper 修正中...';
-    document.getElementById('loadingBar').classList.add('show');
-    document.getElementById('loadingBarMsg').textContent = 'Whisper 修正识别中...';
-
-    try {
-      const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: blob
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Whisper 失败');
-
-      const rawText = data.text.trim();
-      // ── Claude correction layer ──
-      document.getElementById('vcStatus').textContent = '✦ Claude 润色中...';
-      document.getElementById('loadingBarMsg').textContent = 'Claude AI 润色中...';
-      try {
-        transcript = await correctTranscript(rawText);
-      } catch(ce) {
-        transcript = rawText; // fall back to raw Whisper output
+  recog.onspeechend = async () => {
+    // Claude correction after speech ends
+    if (transcript.trim()) {
+      const corrected = await correctTranscript(transcript);
+      if (corrected && corrected !== transcript) {
+        transcript = corrected;
+        document.getElementById('tbox').textContent = corrected;
       }
-      document.getElementById('tbox').textContent = transcript;
-      document.getElementById('aiBtn').disabled = !transcript;
-    } catch(e) {
-      // Whisper failed — fall back to SR interim result
-      transcript = srInterim.trim();
-      if (transcript) {
-        document.getElementById('tbox').textContent = transcript;
-        document.getElementById('aiBtn').disabled = false;
-        showToast('Whisper 失败，使用实时识别结果');
-      } else {
-        showToast('识别失败: ' + e.message);
-      }
-    } finally {
-      document.getElementById('loadingBar').classList.remove('show');
-      document.getElementById('vcStatus').textContent = '点击说话或直接输入';
     }
-
-    // Auto-process after voice input — restores voice conversation flow
-    if (transcript.trim()) process();
   };
 
-  mediaRecorder.start();
+  recog.onend = async () => {
+    stopRec();
+    if (transcript.trim()) {
+      document.getElementById('aiBtn').disabled = false;
+      // Auto-process
+      process();
+    }
+  };
+
+  recog.onerror = e => {
+    stopRec();
+    if (e.error === 'not-allowed') showToast('请允许麦克风权限');
+    else showToast('语音错误: ' + e.error);
+  };
+
+  try { recog.start(); } catch(e) { showToast('启动失败，请重试'); }
 }
 
 function stopRec() {
   isRec = false;
-  clearTimeout(recordingTimer);
-  recordingTimer = null;
   document.getElementById('micBtn').classList.remove('on');
   document.getElementById('waves').classList.remove('on');
   document.getElementById('vcStatus').textContent = '点击说话或直接输入';
@@ -641,6 +550,44 @@ function setInput(txt) {
   showToast('已填入，点击 AI 分析');
 }
 
+// ── Confirmation helpers ──
+function isConfirm(text) {
+  text = (text || '').toLowerCase();
+  return ['yes','对','确认','ok','可以','sure','好的','行','没错','是的','correct'].some(w => text.includes(w));
+}
+
+function isReject(text) {
+  text = (text || '').toLowerCase();
+  return ['no','不','取消','不要','算了','先别','保留','错了','cancel','stop'].some(w => text.includes(w));
+}
+
+async function correctTranscript(raw) {
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: `你是语音纠错助手，专门处理中英混合语音识别结果：
+1. 自动识别中英文混合输入
+2. 修正错别字和错误表达
+3. 输出自然流畅的中文
+4. 直接输出结果，不解释
+
+例子：
+"帮我book一个meeting tomorrow 3点" → "帮我安排明天下午3点的会议"
+"cancel那个Monday的appointment" → "取消周一的预约"
+"下周三lunch with Jason" → "下周三和Jason吃午餐"`,
+        messages: [{ role: 'user', content: raw }]
+      })
+    });
+    if (!res.ok) return raw;
+    const d = await res.json();
+    return (d.text || '').trim() || raw;
+  } catch(e) {
+    return raw;
+  }
+}
+
 // ── Process ──
 async function process() {
   const txt = transcript.trim();
@@ -648,10 +595,7 @@ async function process() {
 
   // Handle cancel confirmation state via voice
   if (sessionState.mode === 'cancel_confirm') {
-    const yesWords = ['对','是','确认','取消','删掉','删除','可以','好'];
-    const noWords = ['不是','不对','不要','算了','先别','保留'];
-
-    if (yesWords.some(w => txt.includes(w))) {
+    if (isConfirm(txt)) {
       if (sessionState.pendingCancelEvent && sessionState.pendingCancelEvent.event) {
         const ev = sessionState.pendingCancelEvent.event;
         try {
@@ -686,7 +630,7 @@ async function process() {
       }
     }
 
-    if (noWords.some(w => txt.includes(w))) {
+    if (isReject(txt)) {
       speak('好的，保留这个会议。');
       document.getElementById('aiReplyText').textContent = '好的，会议已保留。';
       document.getElementById('aiEventCard').innerHTML = '';
@@ -759,7 +703,7 @@ day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun`;
           const safeName = (ev.summary||'').replace(/'/g,'`');
           return '<div class="ai-event"><div class="ae-bar" style="background:var(--warn)"></div><div class="ae-info"><div class="ae-title">'+(i+1)+'. '+ev.summary+'</div><div class="ae-meta">'+dt2+'</div></div><button class="ae-btn" style="background:rgba(255,94,94,0.1);border-color:rgba(255,94,94,0.2);color:var(--warn)" onclick="confirmCancel(this.dataset.id,this.dataset.name,this)" data-id="'+safeId+'" data-name="'+safeName+'">取消</button></div>';
         }).join('');
-        speak('我找到多个可能的会议，请确认是哪一个。');
+        speak('找到多个会议，请说第一个或第二个来确认取消哪个。');
         document.getElementById('aiReplyText').textContent = '找到多个会议，请点选或说"第一个""第二个"：';
         document.getElementById('aiEventCard').innerHTML = cards;
         document.getElementById('aiReply').classList.add('show');
@@ -770,7 +714,7 @@ day_key选项: today/tomorrow/day_after/this_mon~this_sat/next_mon~next_sun`;
       sessionState.mode = 'cancel_confirm';
       sessionState.pendingCancelEvent = { event: match };
       const dt = match.start.dateTime ? new Date(match.start.dateTime).toLocaleString('zh',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : match.start.date;
-      const msg = '找到了：' + match.summary + '（' + dt + '），确认取消吗？';
+      const msg = '找到了 ' + match.summary + '，' + dt + '，请说确认取消，或说保留。';
       speak(msg);
       document.getElementById('aiReplyText').textContent = msg;
       const safeMatchId = match.id;
@@ -861,8 +805,6 @@ function speak(txt) {
   const voices = window.speechSynthesis.getVoices();
   const zh = voices.find(v => v.lang.includes('zh'));
   if (zh) u.voice = zh;
-  // Auto-restart recording after AI finishes speaking — enables voice conversation loop
-  u.onend = () => { if (!isRec) toggleRec(); };
   window.speechSynthesis.speak(u);
 }
 
@@ -1005,10 +947,9 @@ function switchTab(tab) {
   const todoWrap = document.getElementById('todoWrap');
   const voiceWrap = document.querySelector('.voice-wrap');
 
-  // Hide ALL sections completely
-  [calWrap, emailWrap, todoWrap, voiceWrap].forEach(el => {
-    if (el) { el.style.display = 'none'; el.style.height = ''; }
-  });
+  // Hide all
+  [calWrap, emailWrap, todoWrap].forEach(el => { if(el) el.style.display = 'none'; });
+  if (voiceWrap) voiceWrap.style.display = 'none';
 
   // Reset nav
   document.querySelectorAll('.ni').forEach(n => {
@@ -1034,119 +975,54 @@ function switchTab(tab) {
   }
 }
 
-// ── Email Voice & Compose (Dual-mode: SpeechRecognition realtime + Whisper correction) ──
-let emailMediaRecorder = null;
-let emailAudioChunks = [];
-let emailSrRecog = null;
-let emailSrInterim = '';
+// ── Email Voice & Compose ──
+let emailRecog = null;
 let emailIsRec = false;
-let emailMicStream = null; // module-level ref for reliable release
 let savedDrafts = [];
-
-function releaseEmailStream() {
-  if (emailMicStream) {
-    emailMicStream.getTracks().forEach(t => t.stop());
-    emailMicStream = null;
-  }
-}
 
 async function startEmailRec() {
   if (emailIsRec) {
-    emailSrRecog && emailSrRecog.abort();
-    emailSrRecog = null;
-    if (emailMediaRecorder && emailMediaRecorder.state !== 'inactive') {
-      emailMediaRecorder.stop(); // onstop will call releaseEmailStream()
-    } else {
-      releaseEmailStream();
-    }
-    return;
-  }
-
-  releaseEmailStream(); // release any previously leaked stream
-
-  try {
-    emailMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch(e) { showToast('请允许麦克风权限'); return; }
-
-  // ── 1. SpeechRecognition: realtime interim display ──
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SR) {
-    emailSrRecog = new SR();
-    emailSrRecog.lang = 'zh-CN';
-    emailSrRecog.continuous = true;
-    emailSrRecog.interimResults = true;
-    emailSrRecog.onresult = e => {
-      let final = '', interim = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      emailSrInterim = final + interim;
-      const el = document.getElementById('emailDraft');
-      el.innerHTML = '';
-      if (final) el.appendChild(document.createTextNode(final));
-      if (interim) {
-        const span = document.createElement('span');
-        span.style.cssText = 'color:var(--muted2);font-style:italic';
-        span.textContent = interim;
-        el.appendChild(span);
-      }
-    };
-    emailSrRecog.onerror = () => {};
-    try { emailSrRecog.start(); } catch(e) {}
-  }
-
-  // ── 2. MediaRecorder: record full audio for Whisper ──
-  const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-
-  emailAudioChunks = [];
-  emailSrInterim = '';
-  emailMediaRecorder = new MediaRecorder(emailMicStream, mimeType ? { mimeType } : {});
-  emailMediaRecorder.ondataavailable = e => { if (e.data.size > 0) emailAudioChunks.push(e.data); };
-
-  emailMediaRecorder.onstart = () => {
-    emailIsRec = true;
-    document.getElementById('emailRecBtn').textContent = '⏹ 停止';
-    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在聆听...</span>';
-  };
-
-  emailMediaRecorder.onstop = async () => {
-    releaseEmailStream(); // always release mic first
+    emailRecog && emailRecog.abort();
     emailIsRec = false;
     document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('请直接在邮件框内打字'); return; }
 
-    const blob = new Blob(emailAudioChunks, { type: mimeType || 'audio/webm' });
-    if (blob.size < 1000) { showToast('录音太短，请重试'); return; }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(t => t.stop());
+  } catch(e) { showToast('请允许麦克风权限'); return; }
 
-    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">✦ Whisper 修正中...</span>';
+  emailRecog = new SR();
+  emailRecog.lang = 'en-US';
+  emailRecog.continuous = false;
+  emailRecog.interimResults = true;
 
-    try {
-      const res = await fetch(`/api/whisper?filename=audio.${ext}&lang=zh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: blob
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Whisper 失败');
+  emailRecog.onstart = () => {
+    emailIsRec = true;
+    document.getElementById('emailRecBtn').textContent = '⏹ 停止';
+    document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted2)">正在听...</span>';
+  };
 
-      document.getElementById('emailDraft').textContent = data.text.trim();
+  emailRecog.onresult = e => {
+    let txt = '';
+    for (let i=e.resultIndex; i<e.results.length; i++) txt += e.results[i][0].transcript;
+    document.getElementById('emailDraft').textContent = txt;
+  };
+
+  emailRecog.onend = () => {
+    emailIsRec = false;
+    document.getElementById('emailRecBtn').textContent = '🎙 口述邮件内容';
+    const content = document.getElementById('emailDraft').innerText;
+    if (content && content.trim()) {
       document.getElementById('aiEmailBtn').disabled = false;
       showToast('录音完成，点击 AI 润色');
-    } catch(e) {
-      // Fall back to SR result
-      if (emailSrInterim.trim()) {
-        document.getElementById('emailDraft').textContent = emailSrInterim.trim();
-        document.getElementById('aiEmailBtn').disabled = false;
-        showToast('Whisper 失败，使用实时识别结果');
-      } else {
-        showToast('识别失败: ' + e.message);
-        document.getElementById('emailDraft').textContent = '';
-      }
     }
   };
 
-  emailMediaRecorder.start();
+  try { emailRecog.start(); } catch(e) { showToast('启动失败，请重试'); }
 }
 
 async function aiWriteEmail() {
@@ -1176,8 +1052,7 @@ async function aiWriteEmail() {
     document.getElementById('emailDraft').textContent = data.text;
     document.getElementById('aiEmailBtn').textContent = '✦ 重新润色';
     document.getElementById('aiEmailBtn').disabled = false;
-    document.getElementById('gmailBtn').style.display = '';
-    showToast('AI 邮件已生成，点击"在 Gmail 中打开"发送');
+    showToast('AI 邮件已生成，可以修改后发送');
   } catch(e) {
     document.getElementById('aiEmailBtn').textContent = '✦ AI 润色';
     document.getElementById('aiEmailBtn').disabled = false;
@@ -1213,7 +1088,7 @@ function renderDrafts() {
       <div style="font-size:11px;color:#5a7090;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${d.body}</div>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button onclick="loadDraft(${i})" style="flex:1;padding:6px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:var(--cyan);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">编辑</button>
-        <button onclick="openInGmailDraft(${i})" style="flex:2;padding:6px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🔗 在 Gmail 中打开</button>
+        <button onclick="sendDraft(${i})" style="flex:2;padding:6px;background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.2);color:var(--cyan);border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📤 发送</button>
         <button onclick="deleteDraft(${i})" style="flex:1;padding:6px;background:transparent;border:1px solid var(--border);color:var(--muted2);border-radius:7px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">删除</button>
       </div>`;
     c.appendChild(el);
@@ -1235,26 +1110,65 @@ function deleteDraft(i) {
   showToast('草稿已删除');
 }
 
-function openInGmail() {
+// Fix 2: Stable base64 encoding for Chinese/special characters
+function base64UrlEncode(str) {
+  return btoa(
+    new TextEncoder().encode(str)
+      .reduce((data, byte) => data + String.fromCharCode(byte), '')
+  ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function sendEmail() {
   const to = document.getElementById('emailTo').value.trim();
   const subject = document.getElementById('emailSubject').value.trim();
   const body = document.getElementById('emailDraft').innerText.trim();
 
+  if (!to) { showToast('请填写收件人邮箱'); return; }
   if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
 
-  const url = 'mailto:' + encodeURIComponent(to)
-    + '?subject=' + encodeURIComponent(subject || '(无主题)')
-    + '&body=' + encodeURIComponent(body);
+  // Fix 3: Standard RFC email format
+  const email = `To: ${to}\nSubject: ${subject||'(无主题)'}\nContent-Type: text/plain; charset=utf-8\n\n${body}`;
+  const encoded = base64UrlEncode(email);
 
-  window.open(url, '_blank');
+  try {
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { raw: encoded } })
+    });
+
+    const resText = await res.text();
+    console.log('Gmail API status:', res.status, resText.slice(0,200));
+
+    if (res.ok) {
+      showToast('📩 已保存到 Gmail 草稿箱！');
+      speak('邮件草稿已保存');
+      clearEmail();
+    } else if (res.status === 401) {
+      showToast('权限不足，请重新登录');
+      localStorage.clear();
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+    } else if (res.status === 403) {
+      showToast('没有Gmail权限，请重新登录授权');
+      localStorage.clear();
+      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
+    } else {
+      const err = JSON.parse(resText);
+      throw new Error(err.error?.message || '状态码: ' + res.status);
+    }
+  } catch(e) {
+    console.error('Gmail draft error:', e);
+    showToast('保存失败: ' + e.message);
+  }
 }
 
-function openInGmailDraft(i) {
+async function sendDraft(i) {
   const d = savedDrafts[i];
-  const url = 'mailto:' + encodeURIComponent(d.to || '')
-    + '?subject=' + encodeURIComponent(d.subject || '(无主题)')
-    + '&body=' + encodeURIComponent(d.body || '');
-  window.open(url, '_blank');
+  document.getElementById('emailTo').value = d.to;
+  document.getElementById('emailSubject').value = d.subject;
+  document.getElementById('emailDraft').textContent = d.body;
+  await sendEmail();
+  deleteDraft(i);
 }
 
 function clearEmail() {
@@ -1262,7 +1176,6 @@ function clearEmail() {
   document.getElementById('emailSubject').value = '';
   document.getElementById('emailDraft').innerHTML = '<span style="color:var(--muted);font-style:italic">点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...</span>';
   document.getElementById('aiEmailBtn').disabled = true;
-  document.getElementById('gmailBtn').style.display = 'none';
 }
 
 // ── Delete Event ──
