@@ -145,6 +145,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="user-avatar" id="userAvatar" onclick="logout()">?</div>
       <div class="live-dot"></div>
     </div>
+    <button id="langToggle" onclick="toggleLang()" style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);color:var(--cyan);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:6px;">中文</button>
   </div>
 
   <div class="loading-screen" id="loadingScreen">
@@ -277,6 +278,7 @@ const CLIENT_ID = '387089537159-1ndbikl7qbe388llbgv3lcvmut4jik70.apps.googleuser
 
 // ── State ──
 let token = null;
+let uiLang = 'en'; // 'en' or 'zh' - UI language (default English for builders)
 let chatHistory = [];
 let weekOffset = 0;
 let selectedDate = new Date();
@@ -406,7 +408,7 @@ function showApp() {
     }, expiresIn);
   }
   loadCal();
-  // User info already set in checkTokenAndInit
+  applyUI(); // Apply default UI language (English)
 }
 
 function logout() {
@@ -464,6 +466,133 @@ function isReject(t) {
 }
 
 // ── Voice Init ──
+// ── Language Detection ──
+function detectLang(text) {
+  return /[一-龥]/.test(text) ? 'zh' : 'en';
+}
+
+// ── UI Strings ──
+const UI = {
+  en: {
+    tap: 'Tap to speak or type',
+    sub: 'AI schedules events in your Google Calendar',
+    recStart: '🎙 Start Recording',
+    recStop: '⏹ Stop',
+    aiBtn: '✦ AI Analyse',
+    listening: '🔴 Listening...',
+    analysing: '✦ Analysing...',
+    placeholder: 'Say a schedule, or type here...',
+    calTitle: 'Calendar',
+    refresh: '🔄 Refresh',
+    today: 'Today',
+    noEvents: 'No events today
+Use voice to add one 🎙',
+    emailTitle: '✉️ Voice Email',
+    emailTo: 'Recipient email',
+    emailSubject: 'Subject',
+    emailRec: '🎙 Dictate email',
+    emailAI: '✦ AI Polish',
+    emailOpen: '🔗 Open in Gmail',
+    emailClear: '🗑 Clear',
+    emailPlaceholder: 'Tap "Dictate email" and speak your message...',
+    cancel: 'Cancel',
+    addBtn: '+ Add',
+    added: '✓ Added',
+    weekOverview: 'This Week',
+    privacy: 'Privacy',
+    logout: 'Logout',
+    calendar: 'Calendar',
+    email: 'Email',
+    q1: 'Meeting next Mon 3pm',
+    q2: 'See client tomorrow',
+    q3: "Today's schedule",
+  },
+  zh: {
+    tap: '点击说话或直接输入',
+    sub: 'AI 识别日程，自动加入 Google 日历',
+    recStart: '🎙 开始录音',
+    recStop: '⏹ 停止',
+    aiBtn: '✦ AI 分析',
+    listening: '🔴 正在聆听...',
+    analysing: '✦ AI 理解中...',
+    placeholder: '说出日程，或在这里打字...',
+    calTitle: '日历',
+    refresh: '🔄 刷新',
+    today: '今日日程',
+    noEvents: '这天没有日程
+用语音说出来就能添加 🎙',
+    emailTitle: '✉️ 语音写邮件',
+    emailTo: '收件人邮箱',
+    emailSubject: '主题',
+    emailRec: '🎙 口述邮件内容',
+    emailAI: '✦ AI 润色',
+    emailOpen: '🔗 在 Gmail 中打开',
+    emailClear: '🗑 清除',
+    emailPlaceholder: '点击"口述邮件内容"说出大概意思，AI 会帮你写成完整邮件...',
+    cancel: '取消',
+    addBtn: '+ 加入',
+    added: '✓ 已加入',
+    weekOverview: '本周总览',
+    privacy: '隐私',
+    logout: '退出',
+    calendar: '日历',
+    email: '邮件',
+    q1: '下周一3点开会',
+    q2: '明天见客户',
+    q3: '今天安排',
+  }
+};
+
+function t(key) { return UI[uiLang][key] || UI['en'][key] || key; }
+
+function toggleLang() {
+  uiLang = uiLang === 'en' ? 'zh' : 'en';
+  document.getElementById('langToggle').textContent = uiLang === 'en' ? '中文' : 'EN';
+  applyUI();
+}
+
+function applyUI() {
+  const s = UI[uiLang];
+  // Voice section
+  const vcStatus = document.getElementById('vcStatus');
+  if (vcStatus && !isRec) vcStatus.textContent = s.tap;
+  const vcSub = document.querySelector('.vc-info p');
+  if (vcSub) vcSub.textContent = s.sub;
+  const recBtn = document.getElementById('recBtn');
+  if (recBtn && !isRec) recBtn.textContent = s.recStart;
+  const aiBtn = document.getElementById('aiBtn');
+  if (aiBtn) aiBtn.textContent = s.aiBtn;
+  // Tbox placeholder
+  const tbox = document.getElementById('tbox');
+  if (tbox && !tbox.innerText.trim()) tbox.innerHTML = '<span class="tbox-placeholder">' + s.placeholder + '</span>';
+  // Quick commands
+  const qcmds = document.querySelectorAll('.qcmd');
+  if (qcmds[0]) qcmds[0].textContent = s.q1;
+  if (qcmds[1]) qcmds[1].textContent = s.q2;
+  if (qcmds[2]) qcmds[2].textContent = s.q3;
+  // Calendar section
+  const secTitles = document.querySelectorAll('.sec-title');
+  if (secTitles[0]) secTitles[0].textContent = s.calTitle;
+  if (secTitles[secTitles.length-1]) secTitles[secTitles.length-1].textContent = s.weekOverview;
+  // Email section
+  const emailTitle = document.querySelector('#emailWrap .sec-title, #emailWrap [style*="font-weight:700"]');
+  if (emailTitle) emailTitle.textContent = s.emailTitle;
+  const emailTo = document.getElementById('emailTo');
+  if (emailTo) emailTo.placeholder = s.emailTo;
+  const emailSubject = document.getElementById('emailSubject');
+  if (emailSubject) emailSubject.placeholder = s.emailSubject;
+  const emailRecBtn = document.getElementById('emailRecBtn');
+  if (emailRecBtn) emailRecBtn.textContent = s.emailRec;
+  const emailDraft = document.getElementById('emailDraft');
+  if (emailDraft && emailDraft.innerText.trim() === '') {
+    emailDraft.innerHTML = '<span style="color:var(--muted);font-style:italic">' + s.emailPlaceholder + '</span>';
+  }
+  // Nav labels
+  const niLabels = document.querySelectorAll('.ni-lbl');
+  const navMap = [s.calendar, s.email, s.privacy, s.logout];
+  niLabels.forEach((lbl, i) => { if (navMap[i]) lbl.textContent = navMap[i]; });
+}
+
 let lastSpeechTime = Date.now();
 
 function initSpeech() {
@@ -477,21 +606,23 @@ function initSpeech() {
   recog = new SR();
   recog.continuous = true;
   recog.interimResults = true;
-  recog.lang = 'zh-CN';
+  recog.lang = 'zh-CN'; // will auto-switch based on speech
 
   recog.onresult = async (e) => {
     lastSpeechTime = Date.now();
-    // Show interim text realtime
     let interim = '', final = '';
     for (let i = 0; i < e.results.length; i++) {
       if (e.results[i].isFinal) final += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
     if (interim) document.getElementById('tbox').textContent = interim;
-    if (!final) return; // wait for final result
+    if (!final) return;
     const raw = final;
+    // Auto-switch recognition language based on what was said
+    const detectedLang = detectLang(raw);
+    recog.lang = detectedLang === 'zh' ? 'zh-CN' : 'en-US';
     document.getElementById('tbox').textContent = raw;
-    document.getElementById('vcStatus').textContent = '✦ AI 理解中...';
+    document.getElementById('vcStatus').textContent = detectedLang === 'zh' ? '✦ AI 理解中...' : '✦ Analysing...';
 
     transcript = raw;
     document.getElementById('tbox').textContent = raw;
@@ -592,10 +723,14 @@ async function correctTranscript(raw) {
 function speak(txt) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(txt);
-  u.lang = 'zh-CN'; u.rate = 0.95;
+  const lang = detectLang(txt);
+  u.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
+  u.rate = 0.95;
   const voices = window.speechSynthesis.getVoices();
-  const zh = voices.find(v => v.lang.includes('zh'));
-  if (zh) u.voice = zh;
+  const voice = lang === 'zh'
+    ? voices.find(v => v.lang.includes('zh'))
+    : voices.find(v => v.lang.includes('en'));
+  if (voice) u.voice = voice;
   u.onend = () => {
     if (isRec) {
       try { recog.start(); } catch(e) {}
@@ -700,7 +835,14 @@ async function process() {
     return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
   }).join('\n') || '暂无日程';
 
-  const system = '你是AI日历助理，用户语音识别可能有错误（错别字、中英混合、断句不准），请自动纠正并理解真实意思再做判断。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
+  co(function() {
+    const lang = detectLang(txt);
+    if (lang === 'zh') {
+      return '你是AI日历助理，用户语音识别可能有错误（错别字、中英混合），请自动纠正并理解真实意思再做判断。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答"}\n取消：{"action":"cancel","keyword":"关键词"}';
+    } else {
+      return 'You are an AI calendar assistant. Speech may have errors — infer real intent. Date context: ' + dateCtxStr() + '\nThis week:\n' + evList + '\n\nReturn JSON only. Create: {"action":"create","complete":true/false,"missing":"what","reply":"ask user e.g. What time?","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\nQuery: {"action":"query","reply":"answer"}\nCancel: {"action":"cancel","keyword":"keyword"}';
+    }
+  })()
 
   try {
     const raw = await callAI(system, txt);
@@ -1024,7 +1166,7 @@ async function startEmailRec() {
   } catch(e) { showToast('请允许麦克风权限'); return; }
 
   emailRecog = new SR();
-  emailRecog.lang = 'en-US';
+  emailRecog.lang = 'zh-CN'; // default Chinese, auto-switches
   emailRecog.continuous = false;
   emailRecog.interimResults = true;
 
