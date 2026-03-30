@@ -475,13 +475,21 @@ function initSpeech() {
   }
 
   recog = new SR();
-  recog.continuous = false;
-  recog.interimResults = false;
-  recog.lang = 'en-US'; // handles Chinese + English mixed
+  recog.continuous = true;
+  recog.interimResults = true;
+  recog.lang = 'zh-CN';
 
   recog.onresult = async (e) => {
     lastSpeechTime = Date.now();
-    const raw = e.results[0][0].transcript;
+    // Show interim text realtime
+    let interim = '', final = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    if (interim) document.getElementById('tbox').textContent = interim;
+    if (!final) return; // wait for final result
+    const raw = final;
     document.getElementById('tbox').textContent = raw;
     document.getElementById('vcStatus').textContent = '✦ AI 理解中...';
 
@@ -692,7 +700,7 @@ async function process() {
     return (e.summary||'无标题') + ' (' + dt + ') [id:' + e.id + ']';
   }).join('\n') || '暂无日程';
 
-  const system = '你是AI日历助理，用户语音可能有错误，请自动理解真实意思。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
+  const system = '你是AI日历助理，用户语音识别可能有错误（错别字、中英混合、断句不准），请自动纠正并理解真实意思再做判断。日期：' + dateCtxStr() + '\n本周日程：\n' + evList + '\n\n【重要】只返回JSON，不加任何说明文字，否则系统崩溃。\n创建：{"action":"create","complete":true/false,"missing":"缺少什么","reply":"问用户，如：几点开会？直接说时间就好","title":"","day_key":"today","time":"14:00","duration":60,"people":"","location":""}\n查询：{"action":"query","reply":"回答内容"}\n取消：{"action":"cancel","keyword":"关键词"}';
 
   try {
     const raw = await callAI(system, txt);
@@ -1118,57 +1126,16 @@ function base64UrlEncode(str) {
   ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function sendEmail() {
-  const to = document.getElementById('emailTo').value.trim();
-  const subject = document.getElementById('emailSubject').value.trim();
-  const body = document.getElementById('emailDraft').innerText.trim();
-
-  if (!to) { showToast('请填写收件人邮箱'); return; }
-  if (!body || body.includes('点击')) { showToast('请先写邮件内容'); return; }
-
-  // Fix 3: Standard RFC email format
-  const email = `To: ${to}\nSubject: ${subject||'(无主题)'}\nContent-Type: text/plain; charset=utf-8\n\n${body}`;
-  const encoded = base64UrlEncode(email);
-
-  try {
-    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: { raw: encoded } })
-    });
-
-    const resText = await res.text();
-    console.log('Gmail API status:', res.status, resText.slice(0,200));
-
-    if (res.ok) {
-      showToast('📩 已保存到 Gmail 草稿箱！');
-      speak('邮件草稿已保存');
-      clearEmail();
-    } else if (res.status === 401) {
-      showToast('权限不足，请重新登录');
-      localStorage.clear();
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-    } else if (res.status === 403) {
-      showToast('没有Gmail权限，请重新登录授权');
-      localStorage.clear();
-      setTimeout(() => { window.location.href = 'auth.html'; }, 1500);
-    } else {
-      const err = JSON.parse(resText);
-      throw new Error(err.error?.message || '状态码: ' + res.status);
-    }
-  } catch(e) {
-    console.error('Gmail draft error:', e);
-    showToast('保存失败: ' + e.message);
-  }
+function sendEmail() {
+  openInGmail();
 }
 
-async function sendDraft(i) {
+function sendDraft(i) {
   const d = savedDrafts[i];
-  document.getElementById('emailTo').value = d.to;
-  document.getElementById('emailSubject').value = d.subject;
-  document.getElementById('emailDraft').textContent = d.body;
-  await sendEmail();
-  deleteDraft(i);
+  const url = 'mailto:' + encodeURIComponent(d.to || '')
+    + '?subject=' + encodeURIComponent(d.subject || '(无主题)')
+    + '&body=' + encodeURIComponent(d.body || '');
+  window.open(url);
 }
 
 function clearEmail() {
